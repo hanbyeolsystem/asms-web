@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A/S Admin - 엔지니어</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="css/partials.js"></script>
+<script>
+function godel(id){
+  if(confirm("정말로 삭제하시겠습니까??")) alert("(데모) 삭제: " + id);
+}
+</script>
+</head>
+<body>
+<div class="app">
+  <header class="app-header" id="app-header"></header>
+
+  <main class="app-main">
+    <div class="content-wrap">
+      <div class="page-title">엔지니어 관리</div>
+
+      <table class="outer-table"><tr><td>
+        <table class="search-box">
+          <form name="frm1" method="post" action="engineers.html" onsubmit="event.preventDefault();">
+          <tr>
+            <td>
+              <select name="f_name">
+                <option value="en_id">엔지니어 아이디</option>
+                <option value="en_name">엔지니어 성명</option>
+              </select>
+              <input type="text" name="f_value">
+              <input type="submit" value="검색" name="submit">
+              <input type="button" value="신규입력" onclick="alert('(데모) 신규입력');">
+            </td>
+            <td><a href="engineers.html">[처음으로]</a></td>
+          </tr>
+          </form>
+          <tr>
+            <td colspan="2" class="alt right">검색된 게시물수 : <b>27</b>명</td>
+          </tr>
+        </table>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th width="15%">근무지역</th>
+              <th width="15%">아이디</th>
+              <th width="15%">성명</th>
+              <th width="15%">전화번호</th>
+              <th width="15%">휴대폰</th>
+              <th width="15%">최종등록일</th>
+              <th width="10%">삭제</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>대구</td><td><a href="#">iruumee</a></td><td>이루미</td><td></td><td>010-2559-8999</td><td>2022년 10월 28일</td><td><a href="javascript:godel('iruumee');">삭제</a></td></tr>
+            <tr><td>대구</td><td><a href="#">aajieun</a></td><td>안지은</td><td></td><td>010-5036-4680</td><td>2020년 11월 30일</td><td><a href="javascript:godel('aajieun');">삭제</a></td></tr>
+            <tr><td>대구</td><td><a href="#">harris</a></td><td>해리스</td><td>010-7603-7889</td><td></td><td>2019년 05월 22일</td><td><a href="javascript:godel('harris');">삭제</a></td></tr>
+            <tr><td>대구</td><td><a href="#">ljt3539</a></td><td>이정태</td><td>053-954-3539</td><td>010-3510-3539</td><td>2021년 01월 15일</td><td><a href="javascript:godel('ljt3539');">삭제</a></td></tr>
+            <tr><td>대구</td><td><a href="#">mysay21</a></td><td>박상철</td><td></td><td>010-4440-0870</td><td>2019년 02월 10일</td><td><a href="javascript:godel('mysay21');">삭제</a></td></tr>
+            <tr><td>대구</td><td><a href="#">zxcvcc24</a></td><td>최진규</td><td>010-7167-1108</td><td>010-7167-1108</td><td>2018년 01월 22일</td><td><a href="javascript:godel('zxcvcc24');">삭제</a></td></tr>
+            <tr><td>대구</td><td><a href="#">wolffox</a></td><td>김상환</td><td>053-587-4114</td><td>011-507-0885</td><td>2009년 03월 02일</td><td><a href="javascript:godel('wolffox');">삭제</a></td></tr>
+          </tbody>
+        </table>
+
+      </td></tr></table>
+    </div>
+  </main>
+
+  <footer class="app-footer" id="app-footer"></footer>
+</div>
+</body>
+</html>

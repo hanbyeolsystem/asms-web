@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A/S Admin - 매뉴얼</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="css/partials.js"></script>
+</head>
+<body>
+<div class="app">
+  <header class="app-header" id="app-header"></header>
+
+  <main class="app-main">
+    <div class="content-wrap">
+      <div class="page-title">엔지니어 매뉴얼</div>
+
+      <div style="width:800px;margin:12px auto 0;background:#fff;border:1px solid #ccc;padding:18px 24px;line-height:1.7;">
+        <h3 style="margin-top:0;color:#000068;">1. 신규 접수</h3>
+        <ul>
+          <li>상단 메뉴의 <b>[신규접수]</b> 클릭</li>
+          <li>고객 정보 / 주소 / 상품정보 / 시리얼 / 요청사항 입력</li>
+          <li>[접수 등록] 버튼으로 저장</li>
+        </ul>
+
+        <h3 style="color:#000068;">2. 상태 변경</h3>
+        <ul>
+          <li>접수내역 → 접수번호 클릭 → 현재 상태 라디오버튼 변경 → [저장]</li>
+          <li>상태: <span style="background:#ffbcce;padding:1px 6px;">접수</span>
+            <span style="background:#ffcbff;padding:1px 6px;">진행</span>
+            <span style="background:#ffd9b3;padding:1px 6px;">센터</span>
+            <span style="background:#ffd0d0;padding:1px 6px;">견적</span>
+            <span style="background:#ceffff;padding:1px 6px;">택배</span>
+            <span style="background:#ffffce;padding:1px 6px;">완료</span>
+            <span style="background:#ceffce;padding:1px 6px;">출고</span></li>
+        </ul>
+
+        <h3 style="color:#000068;">3. SMS 발송</h3>
+        <ul>
+          <li>접수 상세에서 [SMS 발송] 또는 메뉴의 [SMS관리] 사용</li>
+          <li>잔액 부족 시 발송 실패 → 충전 후 재발송</li>
+        </ul>
+
+        <h3 style="color:#000068;">4. 견적서 인쇄</h3>
+        <ul>
+          <li>접수 상세 → [견적서 인쇄] → 브라우저 인쇄 대화상자에서 출력</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer" id="app-footer"></footer>
+</div>
+</body>
+</html>

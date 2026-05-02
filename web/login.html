@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>늑대와여우컴퓨터 - 로그인</title>
+<link rel="stylesheet" href="css/style.css">
+<script>
+function frm2_submit(){
+  // 데모용: 어떤 값이든 orders.html 로 이동
+  location.href = "orders.html";
+}
+function onEnter(e){ if((e.keyCode||e.which)===13) frm2_submit(); }
+</script>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-box">
+    <div>
+      <div class="login-logo">PACAI</div>
+      <div style="text-align:center;margin-top:6px;font-size:12px;">
+        <span style="color:#888">version 2.0</span> -
+        <span style="font-family:Dotum;font-size:11px;">관리자</span>
+      </div>
+    </div>
+
+    <form name="frm2" onsubmit="event.preventDefault();frm2_submit();" class="login-form">
+      <table border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td>아이디 :&nbsp;</td>
+          <td><input type="text" name="ID" id="ID" autofocus></td>
+        </tr>
+        <tr>
+          <td>비밀번호 :&nbsp;</td>
+          <td><input type="password" name="password" onkeypress="onEnter(event)"></td>
+        </tr>
+      </table>
+    </form>
+
+    <button type="button" class="login-btn" onclick="frm2_submit()">LOGIN</button>
+  </div>
+</div>
+</body>
+</html>

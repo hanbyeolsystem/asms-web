@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A/S Admin - 접수 상세/수정</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="css/partials.js"></script>
+<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+<style>
+  .info-bar {
+    width: 800px; margin: 8px auto 0;
+    background: #eeeeee; padding: 6px 10px;
+    border: 1px solid #ccc;
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    box-sizing: border-box;
+  }
+  .info-bar .badge {
+    padding: 2px 10px; border: 1px solid #999;
+    font-weight: bold;
+  }
+  .data-warning {
+    width: 800px; margin: 12px auto;
+    background: #fff8db; border: 1px solid #e0c54e;
+    padding: 12px; text-align: center; color: #855;
+    border-radius: 4px;
+  }
+</style>
+<script>
+let CURRENT = null;
+
+function getSeqNo() {
+  const p = new URLSearchParams(location.search);
+  return p.get("seq_no");
+}
+
+function cleanReContent(s) {
+  if (!s) return "";
+  return s
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+async function load() {
+  const seq = getSeqNo();
+  if (!seq) {
+    document.getElementById("dataWarn").innerHTML =
+      '접수번호가 지정되지 않았습니다. <a href="orders.html">목록으로</a>';
+    document.getElementById("dataWarn").style.display = "block";
+    return;
+  }
+
+  const diag = [];
+
+  if (location.protocol === "file:") {
+    diag.push("⚠ <code>file://</code> 프로토콜로 열림 — 브라우저가 fetch 를 차단합니다. <code>http://localhost</code> 으로 접속하세요.");
+  }
+
+  // 1) localStorage 의 신규 등록 분
+  const u = JSON.parse(localStorage.getItem("user_orders") || "[]");
+  let order = u.find(o => String(o.seq_no) === String(seq));
+  if (order) diag.push("✓ localStorage 에서 발견");
+
+  // 2) 상세 수집 데이터
+  if (!order) {
+    try {
+      const r = await fetch("data/order_details.json?ts=" + Date.now());
+      diag.push(`order_details.json fetch: status=${r.status}, ok=${r.ok}`);
+      if (r.ok) {
+        const all = await r.json();
+        diag.push(`order_details.json parsed: ${Object.keys(all).length} entries`);
+        order = all[seq];
+        diag.push(`order_details["${seq}"]: ${order ? "FOUND" : "NOT FOUND"}`);
+      }
+    } catch (e) {
+      diag.push(`order_details.json error: ${e.message}`);
+    }
+  }
+
+  // 3) 목록 데이터 (요약)
+  let listOrder = null;
+  try {
+    const r = await fetch("data/orders.json?ts=" + Date.now());
+    diag.push(`orders.json fetch: status=${r.status}, ok=${r.ok}`);
+    if (r.ok) {
+      const orders = await r.json();
+      diag.push(`orders.json parsed: ${orders.length} items`);
+      listOrder = orders.find(o => String(o.seq_no) === String(seq));
+      diag.push(`orders find seq=${seq}: ${listOrder ? "FOUND" : "NOT FOUND"}`);
+    }
+  } catch (e) {
+    diag.push(`orders.json error: ${e.message}`);
+  }
+
+  if (!order && listOrder) {
+    document.getElementById("dataWarn").innerHTML =
+      '⚠ 이 접수의 상세 정보는 아직 수집 중입니다. 목록의 요약 정보만 표시됩니다.<br>' +
+      '<small>잠시 후 새로고침하시면 전체 정보가 나타납니다.</small>';
+    document.getElementById("dataWarn").style.display = "block";
+    order = {
+      seq_no: listOrder.seq_no,
+      cu_name: listOrder.cu_name,
+      mo_engname: listOrder.product,
+      mo_serial: listOrder.serial,
+      re_now: listOrder.status,
+      work_name: listOrder.receiver,
+      or_kind3: listOrder.kind2,
+    };
+  }
+
+  if (!order) {
+    document.getElementById("dataWarn").innerHTML =
+      `해당 접수번호 (#${seq}) 의 데이터를 찾을 수 없습니다.<br>` +
+      '<small style="display:block;margin-top:8px;text-align:left;font-family:monospace;">' +
+      diag.map(d => "· " + d).join("<br>") + '</small>' +
+      '<a href="orders.html">목록으로</a>';
+    document.getElementById("dataWarn").style.display = "block";
+    return;
+  }
+
+  CURRENT = { ...order, seq_no: seq };
+  populate(CURRENT, listOrder);
+}
+
+function populate(o, listOrder) {
+  const f = document.frm;
+  const set = (name, val) => {
+    if (f[name]) f[name].value = val == null ? "" : val;
+  };
+  const setRadio = (name, val) => {
+    const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
+    if (el) el.checked = true;
+  };
+
+  set("cu_name",  o.cu_name);
+  set("co_name",  o.co_name);
+  set("cu_mail",  o.cu_mail);
+  set("zipcode1", o.zipcode1 || o.zipcode || "");
+  set("address1", o.address1);
+  set("address2", o.address2);
+  setRadio("cu_kind", o.cu_kind);
+
+  ["cu_tel", "co_tel", "cu_mobile", "co_fax"].forEach(prefix => {
+    const v = (o[prefix] || "").split("-");
+    set(prefix + "1", v[0]);
+    set(prefix + "2", v[1]);
+    set(prefix + "3", v[2]);
+  });
+
+  set("mo_number",   o.mo_number);
+  set("mo_engname",  o.mo_engname || o.product);
+  set("mo_serial",   o.mo_serial || o.serial);
+  set("mo_srfr",     o.mo_srfr);
+
+  set("cu_want",     o.cu_want);
+  set("re_content",  o.re_content);
+  set("re_content2", "");
+  const view = document.getElementById("reContentView");
+  if (view) {
+    const cleaned = cleanReContent(o.re_content);
+    view.textContent = cleaned || "(이전 처리 의견 없음)";
+  }
+
+  const currentUser = localStorage.getItem("current_user") || "김상환";
+  set("work_name", currentUser);
+
+  let kind3 = o.or_kind3 || o.kind2 || "";
+  if (kind3 === "일반") kind3 = "출장";
+  setRadio("or_kind3", kind3);
+  setRadio("or_kind2", o.or_kind2);
+  setRadio("re_now",   o.re_now || o.status);
+
+  // 헤더 정보
+  const status = o.re_now || o.status || "접수";
+  document.getElementById("orderNo").textContent     = o.order_no || (listOrder && listOrder.order_no) || ("#" + o.seq_no);
+  const sb = document.getElementById("statusBadge");
+  sb.textContent = "현재상태: " + status;
+  sb.className = "badge st-" + status;
+  document.getElementById("orderDate").textContent     = o.process_date || (listOrder && listOrder.process_date) || "";
+  document.getElementById("orderReceiver").textContent = o.work_name || o.receiver || (listOrder && listOrder.receiver) || "";
+}
+
+function save() {
+  if (!CURRENT) { alert("로딩이 완료되지 않았습니다."); return; }
+  const u = JSON.parse(localStorage.getItem("user_orders") || "[]");
+  let idx = u.findIndex(o => String(o.seq_no) === String(CURRENT.seq_no));
+  if (idx < 0) {
+    // 원본 항목 → user_orders 에 복사해서 수정본으로 사용
+    u.push({ ...CURRENT });
+    idx = u.length - 1;
+  }
+  const f = document.frm;
+  const radio = name => {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : "";
+  };
+  const o = u[idx];
+  o.cu_name      = f.cu_name.value;
+  o.co_name      = f.co_name.value;
+  o.cu_mail      = f.cu_mail.value;
+  o.address1     = f.address1.value;
+  o.address2     = f.address2.value;
+  o.zipcode      = f.zipcode1.value;
+  o.cu_tel       = [f.cu_tel1.value, f.cu_tel2.value, f.cu_tel3.value].filter(Boolean).join("-");
+  o.cu_mobile    = [f.cu_mobile1.value, f.cu_mobile2.value, f.cu_mobile3.value].filter(Boolean).join("-");
+  o.cu_kind      = radio("cu_kind");
+  o.mo_serial    = f.mo_serial.value;
+  o.cu_want      = f.cu_want.value;
+  const prev = (o.re_content || "").trim();
+  const add  = f.re_content2.value.trim();
+  if (add) {
+    const n = new Date();
+    const pad = x => String(x).padStart(2, "0");
+    const reNowEl = document.querySelector("input[name='re_now']:checked");
+    const reNow = reNowEl ? reNowEl.value : "";
+    const author = f.work_name.value || "관리자";
+    const head = `${pad(n.getMonth()+1)}월 ${pad(n.getDate())}일 ${pad(n.getHours())}시 ${pad(n.getMinutes())}분  ${author} 기사의 의견 : ${reNow}`;
+    const stamp = `${head}<br>${add}<br>`;
+    o.re_content = prev ? prev + stamp : stamp;
+  } else {
+    o.re_content = prev;
+  }
+  o.work_name    = f.work_name.value;
+  o.receiver     = f.work_name.value;
+  o.or_kind3     = radio("or_kind3"); o.kind2 = o.or_kind3 || "출장";
+  o.re_now       = radio("re_now"); o.status = o.re_now;
+  u[idx] = o;
+  localStorage.setItem("user_orders", JSON.stringify(u));
+  alert("저장되었습니다.");
+  location.href = "orders.html";
+}
+
+function del() {
+  if (!CURRENT) return;
+  if (!confirm("정말로 삭제하시겠습니까?")) return;
+  const u = JSON.parse(localStorage.getItem("user_orders") || "[]");
+  const next = u.filter(o => String(o.seq_no) !== String(CURRENT.seq_no));
+  localStorage.setItem("user_orders", JSON.stringify(next));
+  // 원본 항목도 삭제 마킹
+  const deleted = JSON.parse(localStorage.getItem("deleted_orders") || "[]");
+  if (!deleted.includes(String(CURRENT.seq_no))) {
+    deleted.push(String(CURRENT.seq_no));
+    localStorage.setItem("deleted_orders", JSON.stringify(deleted));
+  }
+  alert("삭제되었습니다.");
+  location.href = "orders.html";
+}
+
+function sendSms() { location.href = "sms.html"; }
+function printEstimate() { window.print(); }
+function searchZip() {
+  if (typeof daum === "undefined") { alert("Daum 우편번호 서비스를 불러오지 못했습니다."); return; }
+  new daum.Postcode({
+    oncomplete: data => {
+      const fullAddr = data.roadAddress || data.jibunAddress || "";
+      let extra = "";
+      if (data.userSelectedType === "R") {
+        if (data.bname) extra += data.bname;
+        if (data.buildingName) extra += (extra ? ", " : "") + data.buildingName;
+      }
+      document.frm.zipcode1.value = data.zonecode;
+      document.frm.address1.value = fullAddr + (extra ? " (" + extra + ")" : "");
+      document.frm.address2.focus();
+    }
+  }).open();
+}
+
+document.addEventListener("DOMContentLoaded", load);
+</script>
+</head>
+<body>
+<div class="app">
+  <header class="app-header" id="app-header"></header>
+
+  <main class="app-main">
+    <div class="content-wrap">
+      <div class="page-title">A/S 접수 상세 / 수정</div>
+
+      <div id="dataWarn" class="data-warning" style="display:none;"></div>
+
+      <div class="info-bar">
+        접수번호 <b id="orderNo">-</b> &nbsp;|&nbsp;
+        <span id="statusBadge" class="badge">상태 -</span> &nbsp;|&nbsp;
+        등록일 <span id="orderDate">-</span> &nbsp;|&nbsp;
+        처리자 <span id="orderReceiver">-</span>
+      </div>
+
+      <form name="frm" onsubmit="event.preventDefault();save();">
+      <table class="form-table">
+        <tr><th colspan="4" style="background:#bbbbff;">고객정보</th></tr>
+        <tr>
+          <th>고객명</th>
+          <td><input type="text" name="cu_name" size="14"></td>
+          <th>고객 구분</th>
+          <td>
+            <label><input type="radio" name="cu_kind" value="개인">개인</label>
+            <label><input type="radio" name="cu_kind" value="사업">사업</label>
+            <label><input type="radio" name="cu_kind" value="법인">법인</label>
+            <label><input type="radio" name="cu_kind" value="기타">기타</label>
+          </td>
+        </tr>
+        <tr>
+          <th>회사명</th>
+          <td><input type="text" name="co_name" size="20"></td>
+          <th>이메일</th>
+          <td><input type="text" name="cu_mail" size="22"></td>
+        </tr>
+        <tr>
+          <th>전화번호</th>
+          <td>
+            <input type="text" name="cu_tel1" size="3">-
+            <input type="text" name="cu_tel2" size="4">-
+            <input type="text" name="cu_tel3" size="4">
+          </td>
+          <th>회사 전화</th>
+          <td>
+            <input type="text" name="co_tel1" size="3">-
+            <input type="text" name="co_tel2" size="4">-
+            <input type="text" name="co_tel3" size="4">
+          </td>
+        </tr>
+        <tr>
+          <th>휴대폰</th>
+          <td>
+            <input type="text" name="cu_mobile1" size="3">-
+            <input type="text" name="cu_mobile2" size="4">-
+            <input type="text" name="cu_mobile3" size="4">
+          </td>
+          <th>팩스</th>
+          <td>
+            <input type="text" name="co_fax1" size="3">-
+            <input type="text" name="co_fax2" size="4">-
+            <input type="text" name="co_fax3" size="4">
+          </td>
+        </tr>
+        <tr>
+          <th>주소</th>
+          <td colspan="3">
+            <input type="text" name="zipcode1" size="8" readonly>
+            <button type="button" class="btn" onclick="searchZip()">우편번호 검색</button><br>
+            <input type="text" name="address1" size="50" readonly onclick="searchZip()" style="cursor:pointer;margin-top:4px;background:#fafafa;"><br>
+            <input type="text" name="address2" size="50" placeholder="상세주소" style="margin-top:4px;">
+          </td>
+        </tr>
+
+        <tr><th colspan="4" style="background:#bbbbff;">상품정보</th></tr>
+        <tr>
+          <th>상품 코드</th>
+          <td><input type="text" name="mo_number" size="14" readonly></td>
+          <th>상품명</th>
+          <td><input type="text" name="mo_engname" size="22" readonly></td>
+        </tr>
+        <tr>
+          <th>시리얼번호</th>
+          <td><input type="text" name="mo_serial" size="14"></td>
+          <th>제조사</th>
+          <td><input type="text" name="mo_srfr" size="22" readonly></td>
+        </tr>
+        <tr>
+          <th>요청방법</th>
+          <td colspan="3">
+            <label><input type="radio" name="or_kind3" value="출장">출장</label>
+            <label><input type="radio" name="or_kind3" value="택배">택배</label>
+            <label><input type="radio" name="or_kind3" value="방문">방문</label>
+          </td>
+        </tr>
+        <tr>
+          <th>고객 요청사항</th>
+          <td colspan="3"><textarea name="cu_want" rows="8" style="width:100%;"></textarea></td>
+        </tr>
+
+        <tr><th colspan="4" style="background:#bbbbff;">처리정보</th></tr>
+        <tr>
+          <th>현재 상태</th>
+          <td colspan="3">
+            <label><input type="radio" name="re_now" value="접수">접수</label>
+            <label><input type="radio" name="re_now" value="진행">진행</label>
+            <label><input type="radio" name="re_now" value="센터">센터</label>
+            <label><input type="radio" name="re_now" value="견적">견적</label>
+            <label><input type="radio" name="re_now" value="택배">택배</label>
+            <label><input type="radio" name="re_now" value="완료">완료</label>
+            <label><input type="radio" name="re_now" value="출고">출고</label>
+          </td>
+        </tr>
+        <tr>
+          <th>처리자</th>
+          <td colspan="3"><input type="text" name="work_name" size="14"></td>
+        </tr>
+        <tr>
+          <th>기존의견 및<br>통보여부</th>
+          <td colspan="3">
+            <div id="reContentView"
+                 style="min-height:60px;padding:6px 8px;background:#f7f7f7;border:1px solid #ddd;
+                        white-space:pre-wrap;font-size:12px;color:#333;"></div>
+            <input type="hidden" name="re_content">
+          </td>
+        </tr>
+        <tr>
+          <th>추가의견 및<br>통보여부</th>
+          <td colspan="3"><textarea name="re_content2" placeholder="처리 내용 입력 (저장 시 기존의견에 누적)"></textarea></td>
+        </tr>
+
+      </table>
+      </form>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="save()">저장</button>
+        <button class="btn" onclick="sendSms()">SMS 발송</button>
+        <button class="btn" onclick="printEstimate()">견적서 인쇄</button>
+        <button class="btn" onclick="del()">삭제</button>
+        <button class="btn" onclick="location.href='orders.html'">목록으로</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer" id="app-footer"></footer>
+</div>
+</body>
+</html>

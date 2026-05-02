@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A/S Admin - SMS 관리</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="css/partials.js"></script>
+<script>
+function send(){
+  const f = document.frm_sms;
+  if(!f.to.value){ alert("수신 번호를 입력하세요"); f.to.focus(); return; }
+  if(!f.msg.value){ alert("메시지를 입력하세요"); f.msg.focus(); return; }
+  alert("(데모) SMS 발송 완료");
+}
+function updateCount(){
+  const t = document.frm_sms.msg.value;
+  const len = new Blob([t]).size;
+  document.getElementById('byte').textContent = len + " byte";
+}
+</script>
+</head>
+<body>
+<div class="app">
+  <header class="app-header" id="app-header"></header>
+
+  <main class="app-main">
+    <div class="content-wrap">
+      <div class="page-title">SMS 관리</div>
+
+      <div style="width:800px;margin:6px auto 0;text-align:right;">
+        <a href="sms.html"><b>SMS발송</b></a> |
+        <a href="sms.html?tab=log">발송로그</a> |
+        <a href="sms.html?tab=recv">수신로그</a>
+      </div>
+      <div style="width:800px;margin:0 auto;height:1px;background:#bf0000;"></div>
+
+      <!-- 잔액 패널 -->
+      <table class="sms-balance" cellspacing="1" cellpadding="0"
+             style="background:#ccc;margin:14px auto 0;">
+        <tr>
+          <td class="head">총 입금액</td>
+          <td class="val">50,000 원</td>
+        </tr>
+        <tr>
+          <td class="head">총 사용액</td>
+          <td class="val">43,020 원</td>
+        </tr>
+        <tr>
+          <td class="head">잔여 금액</td>
+          <td class="val" style="color:#36c;">6,980 원</td>
+        </tr>
+      </table>
+
+      <!-- 발송 폼 -->
+      <form name="frm_sms" onsubmit="event.preventDefault();send();"
+            style="width:780px;margin:18px auto 0;border:1px solid #cccccc;background:#f9f9f9;padding:14px;">
+        <table cellspacing="0" cellpadding="6" style="width:100%;">
+          <tr>
+            <td style="width:160px;background:#eeeeee;">
+              <span class="sms-step"><span class="num">1</span>. 발송 대상 번호를<br>입력합니다.</span>
+            </td>
+            <td>
+              <input type="text" name="to" size="20" placeholder="01012345678">
+              <input type="button" value="주소록에서 선택" onclick="alert('(데모) 주소록');">
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#eeeeee;">
+              <span class="sms-step"><span class="num">2</span>. 메시지 내용을<br>입력합니다.</span>
+            </td>
+            <td>
+              <textarea name="msg" rows="5" cols="60" oninput="updateCount()"
+                placeholder="80바이트 이내로 입력 (한글 40자)"></textarea>
+              <div class="note">현재 길이: <span id="byte">0 byte</span> / 권장 80 byte 이내</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#eeeeee;">
+              <span class="sms-step"><span class="num">3</span>. 예약 발송 (선택)</span>
+            </td>
+            <td>
+              <input type="date" name="rdate"> <input type="time" name="rtime">
+              <span class="note">예약 미입력 시 즉시 발송</span>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" class="center">
+              <button class="btn btn-primary" onclick="send()">발송하기</button>
+              <button class="btn" type="button" onclick="document.frm_sms.reset();updateCount();">초기화</button>
+            </td>
+          </tr>
+        </table>
+      </form>
+
+      <!-- 발송 로그 (간단 미리보기) -->
+      <table class="data-table" style="margin-top:24px;">
+        <thead>
+          <tr>
+            <th width="60">No</th>
+            <th width="120">발송시각</th>
+            <th width="120">수신번호</th>
+            <th>메시지</th>
+            <th width="60">상태</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>3</td><td>2026-04-29 16:30</td><td>011-507-0885</td><td>접수번호 260429-9 접수 완료되었습니다.</td><td>성공</td></tr>
+          <tr><td>2</td><td>2026-04-29 14:10</td><td>010-1234-5678</td><td>택배 발송되었습니다. 송장 12345678.</td><td>성공</td></tr>
+          <tr><td>1</td><td>2026-04-28 09:00</td><td>010-9999-8888</td><td>견적 안내드립니다. 총 75,000원.</td><td>실패</td></tr>
+        </tbody>
+      </table>
+
+    </div>
+  </main>
+
+  <footer class="app-footer" id="app-footer"></footer>
+</div>
+</body>
+</html>

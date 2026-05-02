@@ -1,0 +1,7 @@
+"""harvest 스크립트가 사용하는 설정.
+실제 값은 config.py 로 복사한 뒤 채워 넣으세요.
+config.py 는 .gitignore 로 제외됩니다.
+"""
+ADMIN_ID       = "your_id_here"
+ADMIN_PASSWORD = "your_password_here"
+BASE_URL       = "http://wolf-fox.dreamtec.co.kr/pacai2/admin/as"

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A/S Admin - 고객관리</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="css/partials.js"></script>
+<style>
+  .cust-table { width: 980px; }
+  .cust-table td { white-space: nowrap; }
+  .cust-table td.addr { white-space: normal; max-width: 280px; word-break: break-all; }
+  .pill {
+    display: inline-block; padding: 1px 6px; border: 1px solid #ccc;
+    background: #f7f7f7; font-size: 11px;
+  }
+  .toolbar { width: 980px; margin: 8px auto 0; display: flex; gap: 6px; align-items: center; }
+  .toolbar input[type="text"] { width: 220px; height: 22px; }
+  .stat-bar {
+    width: 980px; margin: 6px auto 0;
+    background: #eeeeee; border: 1px solid #cccccc; padding: 5px 10px;
+    display: flex; gap: 18px;
+  }
+  .stat-bar b { color: #000068; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="app-header" id="app-header"></header>
+
+  <main class="app-main">
+    <div class="content-wrap" style="width:1000px;">
+      <div class="page-title" style="width:1000px;">고객 관리</div>
+
+      <div class="toolbar">
+        <select id="filterField">
+          <option value="cu_name">고객명/거래처</option>
+          <option value="cu_mobile">휴대폰</option>
+          <option value="cu_tel">일반전화</option>
+          <option value="address1">주소</option>
+          <option value="cu_mail">이메일</option>
+        </select>
+        <input type="text" id="filterText" placeholder="검색어를 입력하세요">
+        <select id="filterKind">
+          <option value="">구분 전체</option>
+          <option value="개인">개인</option>
+          <option value="사업">사업</option>
+          <option value="법인">법인</option>
+          <option value="기타">기타</option>
+        </select>
+        <input type="button" class="btn btn-primary" value="검색" onclick="render()">
+        <input type="button" class="btn" value="초기화" onclick="resetFilter()">
+        <input type="button" class="btn" value="CSV 다운로드" onclick="downloadCsv()">
+        <input type="button" class="btn" value="신규 고객" onclick="addCustomer()">
+      </div>
+
+      <div class="stat-bar">
+        <span>총 고객: <b id="cnt-total">0</b></span>
+        <span>개인: <b id="cnt-개인">0</b></span>
+        <span>사업: <b id="cnt-사업">0</b></span>
+        <span>법인: <b id="cnt-법인">0</b></span>
+        <span>기타: <b id="cnt-기타">0</b></span>
+        <span id="harvestStatus" style="margin-left:auto;color:#888;"></span>
+      </div>
+
+      <table class="data-table cust-table" id="custTable">
+        <thead>
+          <tr>
+            <th width="40">No</th>
+            <th width="50">구분</th>
+            <th>고객명 / 거래처</th>
+            <th>휴대폰</th>
+            <th>일반전화</th>
+            <th>이메일</th>
+            <th>주소</th>
+            <th width="60">최근접수</th>
+            <th width="60">관리</th>
+          </tr>
+        </thead>
+        <tbody id="custBody">
+          <tr><td colspan="9">로딩 중…</td></tr>
+        </tbody>
+      </table>
+
+      <div class="center" style="margin: 12px auto 0; width: 980px;">
+        <span id="pageInfo"></span>
+        <div id="pager" style="margin-top:6px;"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer" id="app-footer"></footer>
+</div>
+
+<script>
+let CUSTOMERS = [];
+let FILTERED  = [];
+const PAGE_SIZE = 50;
+let CURRENT_PAGE = 1;
+
+async function load() {
+  try {
+    const res = await fetch("data/customers.json?ts=" + Date.now());
+    CUSTOMERS = await res.json();
+  } catch (e) {
+    document.getElementById("custBody").innerHTML =
+      "<tr><td colspan='9' style='color:#c33;'>customers.json 을 불러오지 못했습니다. " +
+      "정적 파일은 file:// 로 직접 열면 차단됩니다. " +
+      "<br><br><b>해결방법:</b> web 폴더에서 <code>python -m http.server 8080</code> 실행 후 " +
+      "<a href='http://localhost:8080/customers.html'>http://localhost:8080/customers.html</a> 접속.</td></tr>";
+    return;
+  }
+  render();
+  loadStatus();
+  setInterval(loadStatus, 5000);   // 5초마다 수확 상태 갱신
+}
+
+async function loadStatus() {
+  try {
+    const r = await fetch("data/harvest_status.json?ts=" + Date.now());
+    if (!r.ok) return;
+    const s = await r.json();
+    const el = document.getElementById("harvestStatus");
+    if (s.phase === "done") {
+      el.innerHTML = `수집 완료 · 갱신 ${s.updated_at}`;
+      el.style.color = "#080";
+    } else if (s.phase === "list") {
+      el.innerHTML = `<span style="color:#c60;">● 수집중</span> 목록 페이지 ${s.list_page} 스캔 / 누적 고객 ${s.unique_customers}`;
+    } else if (s.phase === "detail") {
+      const pct = s.total_targets ? Math.round(100 * s.total_done / s.total_targets) : 0;
+      el.innerHTML = `<span style="color:#c60;">● 수집중</span> 상세 ${s.total_done}/${s.total_targets} (${pct}%) · 누적 고객 ${s.unique_customers}`;
+    }
+    // 새 데이터 자동 반영 (검색 중이 아닐 때)
+    if (s.unique_customers > CUSTOMERS.length) {
+      const r2 = await fetch("data/customers.json?ts=" + Date.now());
+      CUSTOMERS = await r2.json();
+      render();
+    }
+  } catch (e) {
+    document.getElementById("harvestStatus").textContent = "";
+  }
+}
+
+function render() {
+  const f  = document.getElementById("filterField").value;
+  const q  = document.getElementById("filterText").value.trim();
+  const k  = document.getElementById("filterKind").value;
+  FILTERED = CUSTOMERS.filter(r => {
+    if (k && r.cu_kind !== k) return false;
+    if (q) {
+      const v = (r[f] || "").toLowerCase();
+      if (!v.includes(q.toLowerCase())) return false;
+    }
+    return true;
+  });
+  CURRENT_PAGE = 1;
+  drawRows();
+  drawStats();
+}
+
+function drawRows() {
+  const tb = document.getElementById("custBody");
+  if (!FILTERED.length) {
+    tb.innerHTML = "<tr><td colspan='9'>검색 결과가 없습니다.</td></tr>";
+    document.getElementById("pageInfo").textContent = "";
+    document.getElementById("pager").innerHTML = "";
+    return;
+  }
+  const total = FILTERED.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (CURRENT_PAGE > totalPages) CURRENT_PAGE = totalPages;
+  const start = (CURRENT_PAGE - 1) * PAGE_SIZE;
+  const slice = FILTERED.slice(start, start + PAGE_SIZE);
+
+  tb.innerHTML = slice.map((r, i) => `
+    <tr>
+      <td>${start + i + 1}</td>
+      <td><span class="pill">${esc(r.cu_kind || "-")}</span></td>
+      <td style="text-align:left;">
+        <b>${esc(r.cu_name)}</b>${r.co_name ? " / " + esc(r.co_name) : ""}
+      </td>
+      <td>${esc(r.cu_mobile)}</td>
+      <td>${esc(r.cu_tel)}</td>
+      <td style="text-align:left;">${esc(r.cu_mail)}</td>
+      <td class="addr" style="text-align:left;">
+        ${r.zipcode1 ? "<span class='pill'>" + esc(r.zipcode1) + "</span> " : ""}
+        ${esc(r.address1)} ${esc(r.address2)}
+      </td>
+      <td><a href="order-detail.html?seq_no=${r.last_seq}">#${r.last_seq}</a></td>
+      <td>
+        <a href="javascript:editCustomer('${r.cu_number}')">수정</a> /
+        <a href="javascript:delCustomer('${r.cu_number}','${esc(r.cu_name)}')">삭제</a>
+      </td>
+    </tr>
+  `).join("");
+  document.getElementById("pageInfo").textContent =
+    `${start + 1}-${Math.min(start + PAGE_SIZE, total)} / 검색 ${total} 명 / 전체 ${CUSTOMERS.length} 명`;
+  drawPager(totalPages);
+}
+
+function drawPager(total) {
+  const p = document.getElementById("pager");
+  if (total <= 1) { p.innerHTML = ""; return; }
+  let html = "";
+  const cur = CURRENT_PAGE;
+  const win = 5;
+  const from = Math.max(1, cur - win);
+  const to   = Math.min(total, cur + win);
+  if (cur > 1) html += `<a href="javascript:goPage(1)">[처음]</a> <a href="javascript:goPage(${cur-1})">[이전]</a> `;
+  for (let i = from; i <= to; i++) {
+    html += i === cur ? ` <b style="color:#0000ff">${i}</b> ` : ` <a href="javascript:goPage(${i})">${i}</a> `;
+  }
+  if (cur < total) html += ` <a href="javascript:goPage(${cur+1})">[다음]</a> <a href="javascript:goPage(${total})">[맨끝]</a>`;
+  p.innerHTML = html;
+}
+
+function goPage(n) {
+  CURRENT_PAGE = n;
+  drawRows();
+  window.scrollTo(0, 0);
+}
+
+function drawStats() {
+  document.getElementById("cnt-total").textContent = CUSTOMERS.length;
+  ["개인","사업","법인","기타"].forEach(k => {
+    document.getElementById("cnt-" + k).textContent =
+      CUSTOMERS.filter(r => r.cu_kind === k).length;
+  });
+}
+
+function esc(s) {
+  return (s == null ? "" : String(s))
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function resetFilter() {
+  document.getElementById("filterField").value = "cu_name";
+  document.getElementById("filterText").value = "";
+  document.getElementById("filterKind").value = "";
+  render();
+}
+function editCustomer(id) { alert("(데모) 고객 수정: " + id); }
+function delCustomer(id, name) {
+  if (confirm(`정말 ${name} 고객을 삭제하시겠습니까?`)) alert("(데모) 삭제: " + id);
+}
+function addCustomer() { alert("(데모) 신규 고객 등록 폼이 열립니다."); }
+
+function downloadCsv() {
+  const cols = ["cu_number","cu_kind","cu_name","co_name","cu_mobile","cu_tel",
+                "co_tel","co_fax","cu_mail","zipcode1","address1","address2","last_seq"];
+  const rows = [cols.join(",")];
+  FILTERED.forEach(r => {
+    rows.push(cols.map(c => `"${(r[c] || "").toString().replace(/"/g, '""')}"`).join(","));
+  });
+  const blob = new Blob(["﻿" + rows.join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "customers.csv";
+  a.click();
+}
+
+document.addEventListener("DOMContentLoaded", load);
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && document.activeElement.id === "filterText") render();
+});
+</script>
+</body>
+</html>

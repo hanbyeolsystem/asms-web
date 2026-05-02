@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A/S Admin - 신규접수</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="css/partials.js"></script>
+<!-- 다음 우편번호 서비스 (원본과 동일) -->
+<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+<style>
+  /* 검색 모달 */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 9000;
+    display: none;
+    align-items: center; justify-content: center;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal-box {
+    background: #fff;
+    width: 92%; max-width: 620px;
+    max-height: 88vh;
+    display: flex; flex-direction: column;
+    border: 1px solid #555;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 10px 14px;
+    background: #000068;
+    color: #fff;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-header .close-btn {
+    background: transparent; border: 0; color: #fff;
+    font-size: 24px; cursor: pointer; line-height: 1;
+    padding: 0 4px;
+  }
+  .modal-body { padding: 12px; overflow: auto; flex: 1; }
+  .modal-search {
+    display: flex; gap: 6px; margin-bottom: 8px;
+  }
+  .modal-search input {
+    flex: 1; padding: 7px 10px;
+    border: 1px solid #999; font-size: 14px;
+  }
+  .modal-list {
+    border: 1px solid #ddd;
+    max-height: 60vh; overflow-y: auto;
+    background: #fafafa;
+  }
+  .modal-list-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    background: #fff;
+  }
+  .modal-list-item:hover { background: #f0f3ff; }
+  .modal-list-item small { color: #888; font-size: 11px; }
+  .modal-empty { padding: 14px; color: #888; text-align: center; }
+  .search-btn-inline {
+    margin-left: 4px; padding: 3px 10px;
+    background: #4060c8; color: #fff;
+    border: 1px solid #000033;
+    cursor: pointer; font-size: 12px;
+    border-radius: 3px;
+  }
+</style>
+<script>
+let CUSTOMERS = [];
+let PRODUCTS  = [];
+
+async function loadDB() {
+  try {
+    const r = await fetch("data/customers.json?ts=" + Date.now());
+    if (r.ok) CUSTOMERS = await r.json();
+  } catch (e) {}
+  try {
+    const r = await fetch("data/products.json?ts=" + Date.now());
+    if (r.ok) PRODUCTS = await r.json();
+  } catch (e) {}
+  updateDBStatus();
+}
+
+function updateDBStatus() {
+  const el = document.getElementById("dbStatus");
+  if (el) el.textContent = `(검색 가능: 회원 ${CUSTOMERS.length}명 / 상품 ${PRODUCTS.length}건)`;
+}
+
+/* ==================== 우편번호 검색 (Daum API) ==================== */
+function searchZip() {
+  if (typeof daum === "undefined") {
+    alert("Daum 우편번호 서비스를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.");
+    return;
+  }
+  new daum.Postcode({
+    oncomplete: function (data) {
+      const fullAddr = data.roadAddress || data.jibunAddress || "";
+      let extra = "";
+      if (data.userSelectedType === "R") {
+        if (data.bname) extra += data.bname;
+        if (data.buildingName) extra += (extra ? ", " : "") + data.buildingName;
+      }
+      document.getElementById("zipcode1").value = data.zonecode;
+      document.getElementById("address1").value = fullAddr + (extra ? " (" + extra + ")" : "");
+      document.getElementById("address2").focus();
+    }
+  }).open();
+}
+
+/* ==================== 회원 검색 ==================== */
+function openCustModal() {
+  document.getElementById("custModal").classList.add("show");
+  const s = document.getElementById("custSearch");
+  s.value = "";
+  setTimeout(() => s.focus(), 50);
+  renderCustList("");
+}
+function closeCustModal() {
+  document.getElementById("custModal").classList.remove("show");
+}
+function renderCustList(q) {
+  q = (q || "").trim().toLowerCase();
+  const list = q
+    ? CUSTOMERS.filter(c =>
+        ((c.cu_name || "") + " " + (c.co_name || "")).toLowerCase().includes(q) ||
+        (c.cu_mobile || "").includes(q) ||
+        (c.cu_tel || "").includes(q) ||
+        (c.address1 || "").toLowerCase().includes(q)
+      )
+    : CUSTOMERS;
+  const limited = list.slice(0, 100);
+  const html = limited.map((c, i) => `
+    <div class="modal-list-item" onclick="selectCust(${CUSTOMERS.indexOf(c)})">
+      <b>${esc(c.cu_name)}</b>${c.co_name ? ' <span style="color:#666;">/ ' + esc(c.co_name) + '</span>' : ""}
+      <small style="display:block;margin-top:2px;">
+        ${esc(c.cu_mobile || "")}${c.cu_mobile && c.cu_tel ? " · " : ""}${esc(c.cu_tel || "")}<br>
+        ${esc(c.address1 || "")} ${esc(c.address2 || "")}
+      </small>
+    </div>
+  `).join("");
+  document.getElementById("custList").innerHTML = html ||
+    `<div class="modal-empty">검색 결과 없음<br><small>${CUSTOMERS.length}명의 고객 데이터에서 검색</small></div>`;
+  document.getElementById("custCount").textContent =
+    q ? `${list.length}명 (최대 100명 표시)` : `전체 ${CUSTOMERS.length}명`;
+}
+function selectCust(idx) {
+  const c = CUSTOMERS[idx];
+  if (!c) return;
+  const f = document.frm;
+  f.cu_name.value = c.cu_name || "";
+  if (f.co_name) f.co_name.value = c.co_name || "";
+  f.cu_mail.value = c.cu_mail || "";
+  document.getElementById("zipcode1").value = c.zipcode1 || "";
+  document.getElementById("address1").value = c.address1 || "";
+  document.getElementById("address2").value = c.address2 || "";
+  ["cu_tel", "co_tel", "cu_mobile", "co_fax"].forEach(prefix => {
+    const v = (c[prefix] || "").split("-");
+    if (f[prefix + "1"]) f[prefix + "1"].value = v[0] || "";
+    if (f[prefix + "2"]) f[prefix + "2"].value = v[1] || "";
+    if (f[prefix + "3"]) f[prefix + "3"].value = v[2] || "";
+  });
+  // 고객 구분 라디오
+  if (c.cu_kind) {
+    const r = document.querySelector(`input[name="cu_kind"][value="${c.cu_kind}"]`);
+    if (r) r.checked = true;
+  }
+  closeCustModal();
+}
+
+/* ==================== 상품 검색 ==================== */
+function openProdModal() {
+  document.getElementById("prodModal").classList.add("show");
+  const s = document.getElementById("prodSearch");
+  s.value = "";
+  setTimeout(() => s.focus(), 50);
+  renderProdList("");
+}
+function closeProdModal() {
+  document.getElementById("prodModal").classList.remove("show");
+}
+function renderProdList(q) {
+  q = (q || "").trim().toLowerCase();
+  const list = q
+    ? PRODUCTS.filter(p =>
+        (p.code || "").toLowerCase().includes(q) ||
+        (p.name || "").toLowerCase().includes(q)
+      )
+    : PRODUCTS;
+  const limited = list.slice(0, 200);
+  const html = limited.map((p, i) => `
+    <div class="modal-list-item" onclick="selectProd(${PRODUCTS.indexOf(p)})">
+      ${esc(p.name)}
+    </div>
+  `).join("");
+  document.getElementById("prodList").innerHTML = html ||
+    `<div class="modal-empty">검색 결과 없음<br><small>${PRODUCTS.length}건의 상품 데이터에서 검색</small></div>`;
+  document.getElementById("prodCount").textContent =
+    q ? `${list.length}건 (최대 200건 표시)` : `전체 ${PRODUCTS.length}건`;
+}
+function selectProd(idx) {
+  const p = PRODUCTS[idx];
+  if (!p) return;
+  document.frm.mo_number.value = p.code || "";
+  document.frm.mo_engname.value = p.name || "";
+  closeProdModal();
+}
+
+/* ==================== 등록 ==================== */
+function radio(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : "";
+}
+
+function go() {
+  const f = document.frm;
+  if (!f.cu_name.value) { alert("고객 성명을 입력하세요"); f.cu_name.focus(); return; }
+  if (!f.cu_tel1.value || !f.cu_tel2.value || !f.cu_tel3.value) {
+    alert("고객의 연락처를 입력하세요"); f.cu_tel1.focus(); return;
+  }
+  if (!f.mo_number.value) { alert("상품 검색을 클릭해서 상품정보를 입력하세요"); return; }
+  if (!f.mo_serial.value) { alert("시리얼번호를 입력하세요"); f.mo_serial.focus(); return; }
+  if (!f.cu_want.value) { alert("고객 요청사항을 입력하세요"); f.cu_want.focus(); return; }
+
+  const t = new Date();
+  const yy = String(t.getFullYear()).slice(2);
+  const mm = String(t.getMonth() + 1).padStart(2, "0");
+  const dd = String(t.getDate()).padStart(2, "0");
+  const today_prefix = `${yy}${mm}${dd}-`;
+  const date_str = `${t.getFullYear()}/${mm}/${dd}`;
+
+  const stored = JSON.parse(localStorage.getItem("user_orders") || "[]");
+  const todayCount = stored.filter(o => (o.order_no || "").startsWith(today_prefix)).length + 1;
+
+  const newOrder = {
+    seq_no:       Date.now(),
+    order_no:     today_prefix + todayCount,
+    branch:       "대구",
+    cu_name:      f.cu_name.value.trim(),
+    status:       "접수",
+    product:      f.mo_engname.value.trim() || "미입력",
+    serial:       f.mo_serial.value.trim(),
+    process_date: date_str,
+    receiver:     f.work_name.value.trim() || "김상환",
+    kind2:        radio("or_kind3") || "출장",
+    cu_kind:      radio("cu_kind") || "개인",
+    co_name:      f.co_name ? f.co_name.value : "",
+    cu_tel:       [f.cu_tel1.value, f.cu_tel2.value, f.cu_tel3.value].filter(Boolean).join("-"),
+    co_tel:       [f.co_tel1.value, f.co_tel2.value, f.co_tel3.value].filter(Boolean).join("-"),
+    cu_mobile:    [f.cu_mobile1.value, f.cu_mobile2.value, f.cu_mobile3.value].filter(Boolean).join("-"),
+    co_fax:       [f.co_fax1.value, f.co_fax2.value, f.co_fax3.value].filter(Boolean).join("-"),
+    cu_mail:      f.cu_mail.value,
+    zipcode:      f.zipcode1.value,
+    address1:     f.address1.value,
+    address2:     f.address2.value,
+    mo_number:    f.mo_number.value,
+    cu_want:      f.cu_want.value,
+    created_at:   t.toISOString(),
+  };
+
+  stored.push(newOrder);
+  localStorage.setItem("user_orders", JSON.stringify(stored));
+
+  alert(`접수가 등록되었습니다.\n접수번호: ${newOrder.order_no}`);
+  location.href = "orders.html";
+}
+
+function esc(s) {
+  return (s == null ? "" : String(s))
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+document.addEventListener("DOMContentLoaded", loadDB);
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    document.querySelectorAll(".modal-backdrop.show").forEach(m => m.classList.remove("show"));
+  }
+});
+</script>
+</head>
+<body>
+<div class="app">
+  <header class="app-header" id="app-header"></header>
+
+  <main class="app-main">
+    <div class="content-wrap">
+      <div class="page-title">A/S 신규접수 <span id="dbStatus" style="font-size:11px;font-weight:normal;color:#bcd;margin-left:10px;"></span></div>
+
+      <form name="frm" onsubmit="event.preventDefault();go();">
+      <table class="form-table">
+        <tr>
+          <th>고객 구분</th>
+          <td colspan="3">
+            <label><input type="radio" name="cu_kind" value="개인" checked>개인</label>&nbsp;
+            <label><input type="radio" name="cu_kind" value="사업">사업</label>&nbsp;
+            <label><input type="radio" name="cu_kind" value="법인">법인</label>&nbsp;
+            <label><input type="radio" name="cu_kind" value="기타">기타</label>
+          </td>
+        </tr>
+        <tr>
+          <th>고객 성명</th>
+          <td>
+            <input type="text" name="cu_name" size="14" maxlength="20">
+            <button type="button" class="search-btn-inline" onclick="openCustModal()">회원 검색</button>
+          </td>
+          <th>회사명</th>
+          <td><input type="text" name="co_name" size="20" maxlength="20"></td>
+        </tr>
+        <tr>
+          <th>전화번호</th>
+          <td>
+            <input type="text" name="cu_tel1" size="3" maxlength="4">-
+            <input type="text" name="cu_tel2" size="4" maxlength="4">-
+            <input type="text" name="cu_tel3" size="4" maxlength="4">
+          </td>
+          <th>회사 전화</th>
+          <td>
+            <input type="text" name="co_tel1" size="3" maxlength="4">-
+            <input type="text" name="co_tel2" size="4" maxlength="4">-
+            <input type="text" name="co_tel3" size="4" maxlength="4">
+          </td>
+        </tr>
+        <tr>
+          <th>휴대폰</th>
+          <td>
+            <input type="text" name="cu_mobile1" size="3" maxlength="4">-
+            <input type="text" name="cu_mobile2" size="4" maxlength="4">-
+            <input type="text" name="cu_mobile3" size="4" maxlength="4">
+          </td>
+          <th>팩스</th>
+          <td>
+            <input type="text" name="co_fax1" size="3" maxlength="4">-
+            <input type="text" name="co_fax2" size="4" maxlength="4">-
+            <input type="text" name="co_fax3" size="4" maxlength="4">
+          </td>
+        </tr>
+        <tr>
+          <th>이메일</th>
+          <td colspan="3"><input type="text" name="cu_mail" size="50" maxlength="50"></td>
+        </tr>
+        <tr>
+          <th>주소</th>
+          <td colspan="3">
+            <input type="text" name="zipcode1" id="zipcode1" size="8" readonly>
+            <button type="button" class="search-btn-inline" onclick="searchZip()">우편번호 검색</button>
+            <span class="note">우편번호 검색 클릭 → 다음 우편번호 검색창</span><br>
+            <input type="text" name="address1" id="address1" size="50" readonly onclick="searchZip()" style="cursor:pointer;margin-top:4px;background:#fafafa;" placeholder="주소를 검색해주세요"><br>
+            <input type="text" name="address2" id="address2" size="50" maxlength="100" placeholder="상세주소" style="margin-top:4px;">
+          </td>
+        </tr>
+        <tr>
+          <th>처리자</th>
+          <td><input type="text" name="work_name" size="10" maxlength="20" value="김상환"></td>
+          <th>요청방법</th>
+          <td>
+            <label><input type="radio" name="or_kind3" value="출장" checked>출장</label>&nbsp;
+            <label><input type="radio" name="or_kind3" value="택배">택배</label>&nbsp;
+            <label><input type="radio" name="or_kind3" value="방문">방문</label>
+          </td>
+        </tr>
+        <tr>
+          <th>상품 코드</th>
+          <td>
+            <input type="text" name="mo_number" size="20" maxlength="20" readonly>
+            <button type="button" class="search-btn-inline" onclick="openProdModal()">상품 검색</button>
+          </td>
+          <th>시리얼번호</th>
+          <td><input type="text" name="mo_serial" size="22" maxlength="20"></td>
+        </tr>
+        <tr>
+          <th>상품명</th>
+          <td colspan="3"><input type="text" name="mo_engname" size="40" maxlength="40" readonly></td>
+        </tr>
+        <tr>
+          <th>고객 요청사항</th>
+          <td colspan="3"><textarea name="cu_want"></textarea></td>
+        </tr>
+      </table>
+      </form>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="go()">접수 등록</button>
+        <button class="btn" onclick="location.href='orders.html'">목록으로</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer" id="app-footer"></footer>
+</div>
+
+<!-- ===== 회원 검색 모달 ===== -->
+<div id="custModal" class="modal-backdrop" onclick="if(event.target===this)closeCustModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span>회원 검색 <span id="custCount" style="font-weight:normal;font-size:11px;color:#bcd;"></span></span>
+      <button class="close-btn" type="button" onclick="closeCustModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-search">
+        <input type="text" id="custSearch" placeholder="이름·휴대폰·전화·주소로 검색"
+               oninput="renderCustList(this.value)">
+      </div>
+      <div class="modal-list" id="custList"></div>
+      <div style="margin-top:8px;color:#888;font-size:11px;">
+        ※ 원본 사이트에서 수집한 고객 데이터에서 검색합니다. 일치하는 회원이 없으면 직접 입력하세요.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 상품 검색 모달 ===== -->
+<div id="prodModal" class="modal-backdrop" onclick="if(event.target===this)closeProdModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span>상품 검색 <span id="prodCount" style="font-weight:normal;font-size:11px;color:#bcd;"></span></span>
+      <button class="close-btn" type="button" onclick="closeProdModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-search">
+        <input type="text" id="prodSearch" placeholder="상품명·상품코드로 검색"
+               oninput="renderProdList(this.value)">
+      </div>
+      <div class="modal-list" id="prodList"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
