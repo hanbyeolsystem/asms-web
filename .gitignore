@@ -1,13 +1,13 @@
 # 개인정보가 포함된 데이터 (절대 커밋 금지)
-web/data/orders.json
-web/data/order_details.json
-web/data/customers.json
-web/data/customers.csv
-web/data/order_details_*.json
-web/data/all_seqs.json
-web/data/seen_seqs.json
-web/data/harvest_*_status.json
-!web/data/harvest_orders_status.json
+data/orders.json
+data/order_details.json
+data/customers.json
+data/customers.csv
+data/order_details_*.json
+data/all_seqs.json
+data/seen_seqs.json
+data/harvest_*_status.json
+!data/harvest_orders_status.json
 
 # 백업 파일
 *.bak

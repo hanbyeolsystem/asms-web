@@ -1,35 +1,35 @@
 # ASMS Web (PACAI)
 
-A/S 접수 관리 웹페이지 (Next.js 마이그레이션 전 정적 프로토타입).
+A/S 접수 관리 웹페이지 (정적 HTML/CSS/JS 프로토타입, 반응형).
+
+🌐 **Live Demo**: https://hanbyeolsystem.github.io/asms-web/
 
 ## 구성
 
 ```
 asms-web/
-├── web/                # 정적 사이트 (HTML/CSS/JS)
-│   ├── index.html
-│   ├── orders.html         # 접수내역 목록
-│   ├── order-new.html      # 신규 접수
-│   ├── order-detail.html   # 접수 상세/수정
-│   ├── products.html       # 부품/상품 관리
-│   ├── product-detail.html
-│   ├── customers.html
-│   ├── engineers.html
-│   ├── manual.html
-│   ├── sms.html
-│   ├── login.html
-│   ├── css/
-│   ├── images/
-│   └── data/               # 정적 JSON 데이터 (개인정보 데이터는 .gitignore 됨)
-│       └── products.json
-└── tools/              # 원본 사이트에서 자료 수집하는 파이썬 스크립트
+├── index.html              # 진입 화면
+├── orders.html             # 접수내역 목록
+├── order-new.html          # 신규 접수
+├── order-detail.html       # 접수 상세/수정
+├── products.html           # 부품/상품 관리
+├── product-detail.html
+├── customers.html
+├── engineers.html
+├── manual.html
+├── sms.html
+├── login.html
+├── css/
+├── images/
+├── data/                   # 정적 JSON 데이터 (개인정보 데이터는 .gitignore 됨)
+│   └── products.json
+└── tools/                  # 원본 사이트에서 자료 수집하는 파이썬 스크립트 (선택)
     └── config.py.example   # tools/config.py 로 복사 후 사용
 ```
 
 ## 로컬 실행
 
 ```bash
-cd web
 python -m http.server 8765
 # 브라우저: http://localhost:8765
 ```
@@ -57,4 +57,4 @@ python tools/harvest_recent.py        # 최근 변경분만 incremental
 ## 참고
 
 - 데이터는 클라이언트의 `localStorage` 에 변경분이 저장되며, 원본 JSON 은 변경되지 않습니다.
-- 원본 PHP 사이트와 라우트 매핑은 `02_사이트맵.md` 참고.
+- GitHub Pages 환경에서는 PII 데이터 파일이 없으므로 fallback 데모 데이터로 동작합니다.
