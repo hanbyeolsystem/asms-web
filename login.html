@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>늑대와여우컴퓨터 - 로그인</title>
+<title>한별시스템 - 로그인</title>
 <link rel="stylesheet" href="css/style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js"></script>
@@ -12,72 +12,38 @@
   .login-msg { margin-top: 8px; min-height: 16px; font-size: 12px; }
   .login-msg.err { color: #c00; }
   .login-msg.ok  { color: #060; }
-  .login-mode { text-align:center; margin-top: 10px; font-size: 12px; }
-  .login-mode a { color: #06b; cursor: pointer; }
 </style>
 <script>
-let MODE = "signin"; // 'signin' | 'signup' | 'recover' | 'reset_pw'
-
-function setMode(m) {
-  MODE = m;
-  document.getElementById("modeTitle").textContent =
-    m === "signup"   ? "신규 가입" :
-    m === "recover"  ? "비밀번호 재설정 메일 발송" :
-    m === "reset_pw" ? "새 비밀번호 설정" : "로그인";
-  document.getElementById("loginBtn").textContent =
-    m === "signup"   ? "가입하기" :
-    m === "recover"  ? "재설정 메일 발송" :
-    m === "reset_pw" ? "비밀번호 변경" : "LOGIN";
-  document.getElementById("pwRow").style.display = (m === "recover") ? "none" : "";
-  document.getElementById("idRow").style.display = (m === "reset_pw") ? "none" : "";
-  document.getElementById("PW").placeholder = (m === "reset_pw") ? "새 비밀번호 (6자 이상)" : "";
-  document.getElementById("modeLinks").innerHTML =
-    m === "signin"
-      ? '<a onclick="setMode(\'signup\')">신규 가입</a> · <a onclick="setMode(\'recover\')">비밀번호 잊음</a>'
-      : (m === "reset_pw" ? "" : '<a onclick="setMode(\'signin\')">로그인으로 돌아가기</a>');
-  showMsg("", "");
-}
-
 function showMsg(text, kind) {
   const el = document.getElementById("loginMsg");
   el.textContent = text;
   el.className = "login-msg " + (kind || "");
 }
 
+function toEmail(input) {
+  // '@' 없으면 fake domain 부착해서 Supabase email 형태로 만듦
+  return input.includes("@") ? input : input + "@asms.local";
+}
+
 async function submitForm() {
   if (!window.SB_CONFIGURED) {
-    // 데모 모드 (Supabase 미설정)
     showMsg("(데모 모드) 설정 없이도 로그인 됩니다.", "ok");
     setTimeout(() => location.href = nextUrl(), 500);
     return;
   }
-  const email = document.getElementById("ID").value.trim();
-  const pw    = document.getElementById("PW").value;
-  if (MODE !== "reset_pw" && !email) { showMsg("이메일을 입력하세요.", "err"); return; }
+  const id = document.getElementById("ID").value.trim();
+  const pw = document.getElementById("PW").value;
+  if (!id) { showMsg("아이디를 입력하세요.", "err"); return; }
+  if (!pw) { showMsg("비밀번호를 입력하세요.", "err"); return; }
 
   document.getElementById("loginBtn").disabled = true;
   try {
-    if (MODE === "signin") {
-      const { error } = await window.sb.auth.signInWithPassword({ email, password: pw });
-      if (error) throw error;
-      showMsg("로그인 성공", "ok");
-      setTimeout(() => location.href = nextUrl(), 300);
-    } else if (MODE === "signup") {
-      const { error } = await window.sb.auth.signUp({ email, password: pw });
-      if (error) throw error;
-      showMsg("가입 메일을 발송했습니다. 메일함을 확인해 인증을 마쳐주세요.", "ok");
-    } else if (MODE === "recover") {
-      const redirectTo = location.origin + location.pathname;
-      const { error } = await window.sb.auth.resetPasswordForEmail(email, { redirectTo });
-      if (error) throw error;
-      showMsg("재설정 링크를 메일로 발송했습니다. 메일의 링크를 클릭하면 새 비밀번호를 설정하는 화면으로 돌아옵니다.", "ok");
-    } else if (MODE === "reset_pw") {
-      if (!pw || pw.length < 6) { showMsg("비밀번호는 6자 이상", "err"); return; }
-      const { error } = await window.sb.auth.updateUser({ password: pw });
-      if (error) throw error;
-      showMsg("비밀번호가 변경되었습니다. 잠시 후 이동합니다.", "ok");
-      setTimeout(() => location.href = nextUrl(), 800);
-    }
+    const { error } = await window.sb.auth.signInWithPassword({
+      email: toEmail(id), password: pw,
+    });
+    if (error) throw error;
+    showMsg("로그인 성공", "ok");
+    setTimeout(() => location.href = nextUrl(), 300);
   } catch (e) {
     showMsg(e.message || String(e), "err");
   } finally {
@@ -94,21 +60,8 @@ function onEnter(e) { if ((e.keyCode || e.which) === 13) submitForm(); }
 
 window.addEventListener("DOMContentLoaded", async () => {
   if (!window.SB_CONFIGURED || !window.sb) return;
-
-  // 비밀번호 재설정 링크 진입 — Supabase 가 PASSWORD_RECOVERY 이벤트 발생
-  window.sb.auth.onAuthStateChange((event) => {
-    if (event === "PASSWORD_RECOVERY") setMode("reset_pw");
-  });
-
-  // URL fragment 에 type=recovery 가 있으면 즉시 reset_pw 모드
-  if (location.hash && location.hash.includes("type=recovery")) {
-    setMode("reset_pw");
-    return;
-  }
-
-  // 이미 로그인된 경우 자동 이동 (단 reset_pw 진행 중이면 이동 안 함)
   const { data: { session } } = await window.sb.auth.getSession();
-  if (session && MODE === "signin") location.href = nextUrl();
+  if (session) location.href = nextUrl();
 });
 </script>
 </head>
@@ -119,17 +72,17 @@ window.addEventListener("DOMContentLoaded", async () => {
       <div class="login-logo">한별시스템</div>
       <div style="text-align:center;margin-top:6px;font-size:12px;">
         <span style="color:#888">version 2.0</span> -
-        <span id="modeTitle" style="font-family:Dotum;font-size:11px;">로그인</span>
+        <span style="font-family:Dotum;font-size:11px;">관리자 / 엔지니어 로그인</span>
       </div>
     </div>
 
     <form name="frm2" onsubmit="event.preventDefault();submitForm();" class="login-form">
       <table border="0" cellspacing="0" cellpadding="0">
-        <tr id="idRow">
-          <td>이메일 :&nbsp;</td>
-          <td><input type="email" id="ID" autocomplete="email" autofocus></td>
+        <tr>
+          <td>아이디 :&nbsp;</td>
+          <td><input type="text" id="ID" autocomplete="username" autofocus></td>
         </tr>
-        <tr id="pwRow">
+        <tr>
           <td>비밀번호 :&nbsp;</td>
           <td><input type="password" id="PW" autocomplete="current-password" onkeypress="onEnter(event)"></td>
         </tr>
@@ -138,9 +91,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     <button type="button" class="login-btn" id="loginBtn" onclick="submitForm()">LOGIN</button>
     <div class="login-msg" id="loginMsg"></div>
-    <div class="login-mode" id="modeLinks">
-      <a onclick="setMode('signup')">신규 가입</a> · <a onclick="setMode('recover')">비밀번호 잊음</a>
-    </div>
   </div>
 </div>
 </body>

@@ -36,9 +36,12 @@ Deno.serve(async (req) => {
   try {
     if (req.method === "POST") {
       const body = await req.json();
-      const { email, password, en_id, en_name, en_branch, en_tel, en_mobile, en_role } = body;
+      const { username, email: rawEmail, password, en_id, en_name, en_branch, en_tel, en_mobile, en_role } = body;
+      // username 또는 email 중 하나만 와도 받기. '@' 없으면 fake domain 부착.
+      let email = rawEmail || username;
+      if (email && !email.includes("@")) email = email + "@asms.local";
       if (!email || !password || !en_name) {
-        return json({ error: "email, password, en_name 필수" }, 400);
+        return json({ error: "username(또는 email), password, en_name 필수" }, 400);
       }
       const { data: created, error: e1 } = await admin.auth.admin.createUser({
         email, password, email_confirm: true,

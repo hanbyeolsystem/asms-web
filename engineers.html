@@ -79,16 +79,16 @@ function openAddModal() {
   document.getElementById("addMsg").textContent = "";
   document.getElementById("addForm").reset();
   document.getElementById("addModal").classList.add("show");
-  setTimeout(() => document.getElementById("a_email").focus(), 50);
+  setTimeout(() => document.getElementById("a_username").focus(), 50);
 }
 function closeAddModal() { document.getElementById("addModal").classList.remove("show"); }
 
 async function submitAdd() {
   const f = document.getElementById("addForm");
-  const email = f.a_email.value.trim();
+  const username = f.a_username.value.trim();
   const password = f.a_password.value;
   const en_name = f.a_name.value.trim();
-  const en_id = f.a_id.value.trim() || (email.includes("@") ? email.split("@")[0] : email);
+  const en_id = f.a_id.value.trim() || username;
   const en_branch = f.a_branch.value || "대구";
   const en_tel = f.a_tel.value.trim();
   const en_mobile = f.a_mobile.value.trim();
@@ -96,13 +96,12 @@ async function submitAdd() {
 
   const msg = document.getElementById("addMsg");
   msg.className = "modal-msg";
-  if (!email || !password || !en_name) { msg.textContent = "이메일/비밀번호/성명은 필수"; msg.classList.add("err"); return; }
-  if (password.length < 6) { msg.textContent = "비밀번호는 6자 이상"; msg.classList.add("err"); return; }
+  if (!username || !password || !en_name) { msg.textContent = "아이디/비밀번호/성명은 필수"; msg.classList.add("err"); return; }
 
   document.getElementById("addBtn").disabled = true;
   msg.textContent = "처리 중...";
   const { data, error } = await window.fnCreateEngineer({
-    email, password, en_id, en_name, en_branch, en_tel, en_mobile, en_role,
+    username, password, en_id, en_name, en_branch, en_tel, en_mobile, en_role,
   });
   document.getElementById("addBtn").disabled = false;
   if (error) { msg.textContent = "실패: " + error; msg.classList.add("err"); return; }
@@ -188,10 +187,10 @@ document.addEventListener("DOMContentLoaded", () => {
     <div class="modal-body">
       <form id="addForm" onsubmit="event.preventDefault();submitAdd();">
         <table>
-          <tr><td class="lbl">이메일 *</td><td><input type="email" id="a_email" name="a_email" required placeholder="user@example.com"></td></tr>
-          <tr><td class="lbl">비밀번호 *</td><td><input type="text" id="a_password" name="a_password" required placeholder="6자 이상" autocomplete="new-password"></td></tr>
+          <tr><td class="lbl">아이디 *</td><td><input type="text" id="a_username" name="a_username" required placeholder="wolffox" autocomplete="off"></td></tr>
+          <tr><td class="lbl">비밀번호 *</td><td><input type="text" id="a_password" name="a_password" required placeholder="(자유)" autocomplete="off"></td></tr>
           <tr><td class="lbl">성명 *</td><td><input type="text" id="a_name" name="a_name" required placeholder="홍길동"></td></tr>
-          <tr><td class="lbl">아이디</td><td><input type="text" id="a_id" name="a_id" placeholder="(미입력 시 이메일 prefix 자동)"></td></tr>
+          <tr><td class="lbl">표시 ID</td><td><input type="text" id="a_id" name="a_id" placeholder="(미입력 시 아이디 그대로)"></td></tr>
           <tr><td class="lbl">근무지역</td><td>
             <select id="a_branch" name="a_branch">
               <option value="대구">대구</option>
