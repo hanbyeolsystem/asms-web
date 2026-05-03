@@ -4,5 +4,5 @@
 //   2) Settings → API → anon public key
 // (anon key 는 RLS 가 적용되므로 클라이언트에 노출되어도 안전합니다.)
 
-window.SUPABASE_URL  = "https://YOUR_PROJECT.supabase.co";
-window.SUPABASE_ANON = "YOUR_ANON_KEY";
+window.SUPABASE_URL  = "https://jrzesjgyrvgvwazfajec.supabase.co";
+window.SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyemVzamd5cnZndndhemZhamVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MjgwMTksImV4cCI6MjA5MzMwNDAxOX0.6FAb0CUMuYVqsvWmUR8Bbvmph4MJjlQqSDi_Mkza1c0";
