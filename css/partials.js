@@ -19,12 +19,12 @@
         <div class="top-menu-wrap">
           <a href="orders.html"><b>A/S Management System</b></a> &nbsp;&nbsp;&nbsp;
           <a href="order-new.html">신규접수</a> <span class="sep">|</span>
-          <a href="orders.html">접수내역</a> <span class="sep">|</span>
-          <a href="customers.html">고객관리</a> <span class="sep">|</span>
-          <a href="products.html">부품/상품관리</a> <span class="sep">|</span>
-          <a href="engineers.html">엔지니어</a> <span class="sep">|</span>
-          <a href="manual.html">매뉴얼</a> <span class="sep">|</span>
-          <a href="sms.html">SMS관리</a> <span class="sep">|</span>
+          <a href="orders.html" class="m-hide">접수내역</a> <span class="sep m-hide">|</span>
+          <a href="customers.html" class="m-hide">고객관리</a> <span class="sep m-hide">|</span>
+          <a href="products.html" class="m-hide">부품/상품관리</a> <span class="sep m-hide">|</span>
+          <a href="engineers.html" class="m-hide">엔지니어</a> <span class="sep m-hide">|</span>
+          <a href="manual.html" class="m-hide">매뉴얼</a> <span class="sep m-hide">|</span>
+          <a href="sms.html" class="m-hide">SMS관리</a> <span class="sep m-hide">|</span>
           <a href="#" id="logoutLink">로그아웃</a>
         </div>
       </div>
