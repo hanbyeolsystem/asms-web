@@ -211,11 +211,6 @@ function getModeList() {
   if (PROD_MODE === "lease") {
     return PRODUCTS.filter(p => (p.name || "").includes("임대"));
   }
-  if (PROD_MODE === "top") {
-    return [...PRODUCTS]
-      .sort((a, b) => Number(b.as_count || 0) - Number(a.as_count || 0))
-      .slice(0, 50);
-  }
   return PRODUCTS;
 }
 function renderProdList(q) {
@@ -230,14 +225,14 @@ function renderProdList(q) {
   const limited = list.slice(0, 200);
   const html = limited.map((p, i) => `
     <div class="modal-list-item" onclick="selectProd(${PRODUCTS.indexOf(p)})">
-      ${esc(p.name)}${PROD_MODE === "top" ? ` <small style="color:#888;">· A/S ${esc(p.as_count)}회</small>` : ""}
+      ${esc(p.name)}
     </div>
   `).join("");
   document.getElementById("prodList").innerHTML = html ||
     `<div class="modal-empty">검색 결과 없음<br><small>${base.length}건의 상품 데이터에서 검색</small></div>`;
-  const modeName = PROD_MODE === "lease" ? "임대제품" : (PROD_MODE === "top" ? "주판매" : "전체");
+  const modeName = PROD_MODE === "lease" ? "임대제품" : "전체";
   document.getElementById("prodCount").textContent =
-    q ? `${list.length}건` : `${modeName} ${base.length}건${PROD_MODE === "top" ? " (상위 50)" : ""}`;
+    q ? `${list.length}건` : `${modeName} ${base.length}건`;
 }
 function selectProd(idx) {
   const p = PRODUCTS[idx];
@@ -427,7 +422,6 @@ document.addEventListener("keydown", e => {
             <input type="text" name="mo_number" size="20" maxlength="20" readonly>
             <button type="button" class="search-btn-inline" onclick="openProdModal('all')">상품 검색</button>
             <button type="button" class="search-btn-inline" onclick="openProdModal('lease')">임대제품</button>
-            <button type="button" class="search-btn-inline" onclick="openProdModal('top')">주판매</button>
           </td>
           <th>시리얼번호</th>
           <td><input type="text" name="mo_serial" size="22" maxlength="20"></td>
@@ -493,7 +487,6 @@ document.addEventListener("keydown", e => {
     <div class="prod-mode-tabs">
       <a href="#" class="prod-mode-tab active" data-mode="all"   onclick="event.preventDefault();setProdMode('all')">전체</a>
       <a href="#" class="prod-mode-tab"        data-mode="lease" onclick="event.preventDefault();setProdMode('lease')">임대제품</a>
-      <a href="#" class="prod-mode-tab"        data-mode="top"   onclick="event.preventDefault();setProdMode('top')">주판매 (TOP 50)</a>
     </div>
     <div class="modal-body">
       <div class="modal-search">
