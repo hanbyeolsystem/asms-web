@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>A/S Admin - 부품/상품관리</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="css/partials.js"></script>
 </head>
 <body>
@@ -157,8 +160,12 @@ async function init() {
   syncForm(q);
   let products;
   try {
-    const res = await fetch("data/products.json", { cache: "no-cache" });
-    products = await res.json();
+    if (window.SB_CONFIGURED) {
+      products = await window.dbProductsAll() || [];
+    } else {
+      const res = await fetch("data/products.json", { cache: "no-cache" });
+      products = await res.json();
+    }
   } catch (e) {
     document.getElementById("productsBody").innerHTML =
       '<tr><td colspan="7" style="text-align:center;padding:20px;color:#c00;">데이터 로드 실패: ' + escapeHtml(e.message) + '</td></tr>';

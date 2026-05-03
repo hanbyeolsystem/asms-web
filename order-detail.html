@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>A/S Admin - 접수 상세/수정</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="css/partials.js"></script>
 <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <style>
@@ -61,44 +64,54 @@ async function load() {
 
   const diag = [];
 
-  if (location.protocol === "file:") {
-    diag.push("⚠ <code>file://</code> 프로토콜로 열림 — 브라우저가 fetch 를 차단합니다. <code>http://localhost</code> 으로 접속하세요.");
-  }
-
-  // 1) localStorage 의 신규 등록 분
-  const u = JSON.parse(localStorage.getItem("user_orders") || "[]");
-  let order = u.find(o => String(o.seq_no) === String(seq));
-  if (order) diag.push("✓ localStorage 에서 발견");
-
-  // 2) 상세 수집 데이터
-  if (!order) {
+  // Supabase 설정된 경우 — DB 1회 조회
+  let order = null;
+  let listOrder = null;
+  if (window.SB_CONFIGURED) {
     try {
-      const r = await fetch("data/order_details.json?ts=" + Date.now());
-      diag.push(`order_details.json fetch: status=${r.status}, ok=${r.ok}`);
-      if (r.ok) {
-        const all = await r.json();
-        diag.push(`order_details.json parsed: ${Object.keys(all).length} entries`);
-        order = all[seq];
-        diag.push(`order_details["${seq}"]: ${order ? "FOUND" : "NOT FOUND"}`);
+      const row = await window.dbOrderBySeq(seq);
+      if (row) {
+        order = row;
+        listOrder = row; // 목록 + 상세 합쳐진 단일 행
+        diag.push("✓ Supabase 에서 조회됨");
+      } else {
+        diag.push(`Supabase: seq=${seq} 없음`);
       }
     } catch (e) {
-      diag.push(`order_details.json error: ${e.message}`);
+      diag.push(`Supabase 오류: ${e.message}`);
     }
-  }
+  } else {
+    if (location.protocol === "file:") {
+      diag.push("⚠ <code>file://</code> 프로토콜로 열림 — 브라우저가 fetch 를 차단합니다. <code>http://localhost</code> 으로 접속하세요.");
+    }
+    // 1) localStorage 의 신규 등록 분
+    const u = JSON.parse(localStorage.getItem("user_orders") || "[]");
+    order = u.find(o => String(o.seq_no) === String(seq));
+    if (order) diag.push("✓ localStorage 에서 발견");
 
-  // 3) 목록 데이터 (요약)
-  let listOrder = null;
-  try {
-    const r = await fetch("data/orders.json?ts=" + Date.now());
-    diag.push(`orders.json fetch: status=${r.status}, ok=${r.ok}`);
-    if (r.ok) {
-      const orders = await r.json();
-      diag.push(`orders.json parsed: ${orders.length} items`);
-      listOrder = orders.find(o => String(o.seq_no) === String(seq));
-      diag.push(`orders find seq=${seq}: ${listOrder ? "FOUND" : "NOT FOUND"}`);
+    // 2) 상세 수집 데이터
+    if (!order) {
+      try {
+        const r = await fetch("data/order_details.json?ts=" + Date.now());
+        diag.push(`order_details.json fetch: status=${r.status}, ok=${r.ok}`);
+        if (r.ok) {
+          const all = await r.json();
+          order = all[seq];
+        }
+      } catch (e) {
+        diag.push(`order_details.json error: ${e.message}`);
+      }
     }
-  } catch (e) {
-    diag.push(`orders.json error: ${e.message}`);
+    // 3) 목록 데이터 (요약)
+    try {
+      const r = await fetch("data/orders.json?ts=" + Date.now());
+      if (r.ok) {
+        const orders = await r.json();
+        listOrder = orders.find(o => String(o.seq_no) === String(seq));
+      }
+    } catch (e) {
+      diag.push(`orders.json error: ${e.message}`);
+    }
   }
 
   if (!order && listOrder) {
@@ -189,21 +202,20 @@ function populate(o, listOrder) {
   document.getElementById("orderReceiver").textContent = o.work_name || o.receiver || (listOrder && listOrder.receiver) || "";
 }
 
-function save() {
+async function save() {
   if (!CURRENT) { alert("로딩이 완료되지 않았습니다."); return; }
-  const u = JSON.parse(localStorage.getItem("user_orders") || "[]");
-  let idx = u.findIndex(o => String(o.seq_no) === String(CURRENT.seq_no));
-  if (idx < 0) {
-    // 원본 항목 → user_orders 에 복사해서 수정본으로 사용
-    u.push({ ...CURRENT });
-    idx = u.length - 1;
-  }
   const f = document.frm;
   const radio = name => {
     const el = document.querySelector(`input[name="${name}"]:checked`);
     return el ? el.value : "";
   };
-  const o = u[idx];
+  const u = (!window.SB_CONFIGURED) ? JSON.parse(localStorage.getItem("user_orders") || "[]") : [];
+  let idx = -1;
+  if (!window.SB_CONFIGURED) {
+    idx = u.findIndex(o => String(o.seq_no) === String(CURRENT.seq_no));
+    if (idx < 0) { u.push({ ...CURRENT }); idx = u.length - 1; }
+  }
+  const o = window.SB_CONFIGURED ? { ...CURRENT, seq_no: Number(CURRENT.seq_no) } : u[idx];
   o.cu_name      = f.cu_name.value;
   o.co_name      = f.co_name.value;
   o.cu_mail      = f.cu_mail.value;
@@ -233,23 +245,33 @@ function save() {
   o.receiver     = f.work_name.value;
   o.or_kind3     = radio("or_kind3"); o.kind2 = o.or_kind3 || "출장";
   o.re_now       = radio("re_now"); o.status = o.re_now;
-  u[idx] = o;
-  localStorage.setItem("user_orders", JSON.stringify(u));
+  if (window.SB_CONFIGURED) {
+    delete o.created_at; delete o.updated_at;
+    const saved = await window.dbOrderUpsert(o);
+    if (!saved) { alert("저장 실패 — 콘솔을 확인하세요."); return; }
+  } else {
+    u[idx] = o;
+    localStorage.setItem("user_orders", JSON.stringify(u));
+  }
   alert("저장되었습니다.");
   location.href = "orders.html";
 }
 
-function del() {
+async function del() {
   if (!CURRENT) return;
   if (!confirm("정말로 삭제하시겠습니까?")) return;
-  const u = JSON.parse(localStorage.getItem("user_orders") || "[]");
-  const next = u.filter(o => String(o.seq_no) !== String(CURRENT.seq_no));
-  localStorage.setItem("user_orders", JSON.stringify(next));
-  // 원본 항목도 삭제 마킹
-  const deleted = JSON.parse(localStorage.getItem("deleted_orders") || "[]");
-  if (!deleted.includes(String(CURRENT.seq_no))) {
-    deleted.push(String(CURRENT.seq_no));
-    localStorage.setItem("deleted_orders", JSON.stringify(deleted));
+  if (window.SB_CONFIGURED) {
+    const ok = await window.dbOrderDelete(CURRENT.seq_no);
+    if (!ok) { alert("삭제 실패 — 콘솔을 확인하세요."); return; }
+  } else {
+    const u = JSON.parse(localStorage.getItem("user_orders") || "[]");
+    const next = u.filter(o => String(o.seq_no) !== String(CURRENT.seq_no));
+    localStorage.setItem("user_orders", JSON.stringify(next));
+    const deleted = JSON.parse(localStorage.getItem("deleted_orders") || "[]");
+    if (!deleted.includes(String(CURRENT.seq_no))) {
+      deleted.push(String(CURRENT.seq_no));
+      localStorage.setItem("deleted_orders", JSON.stringify(deleted));
+    }
   }
   alert("삭제되었습니다.");
   location.href = "orders.html";

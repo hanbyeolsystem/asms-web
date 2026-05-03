@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>A/S Admin - 접수내역</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="css/partials.js"></script>
 <style>
   .order-table { width: 100%; }
@@ -164,11 +167,13 @@ function mergeUser() {
 
 async function load() {
   try {
-    const r = await fetch("data/orders.json?ts=" + Date.now());
-    if (r.ok) {
-      ORDERS = await r.json();
+    if (window.SB_CONFIGURED) {
+      const data = await window.dbOrdersAll();
+      ORDERS = data || FALLBACK_ORDERS;
     } else {
-      ORDERS = FALLBACK_ORDERS;
+      const r = await fetch("data/orders.json?ts=" + Date.now());
+      if (r.ok) ORDERS = await r.json();
+      else      ORDERS = FALLBACK_ORDERS;
     }
   } catch (e) {
     ORDERS = FALLBACK_ORDERS;
@@ -308,15 +313,20 @@ function drawPager(total) {
 }
 
 function goPage(n) { CURRENT_PAGE = n; draw(); window.scrollTo(0, 0); }
-function godel(id) {
+async function godel(id) {
   if (!confirm("정말로 삭제하시겠습니까??")) return;
-  const u = getUserOrders();
-  const next = u.filter(o => String(o.seq_no) !== String(id));
-  localStorage.setItem("user_orders", JSON.stringify(next));
-  const deleted = JSON.parse(localStorage.getItem("deleted_orders") || "[]");
-  if (!deleted.includes(String(id))) {
-    deleted.push(String(id));
-    localStorage.setItem("deleted_orders", JSON.stringify(deleted));
+  if (window.SB_CONFIGURED) {
+    const ok = await window.dbOrderDelete(id);
+    if (!ok) { alert("삭제 실패 — 콘솔을 확인하세요."); return; }
+  } else {
+    const u = getUserOrders();
+    const next = u.filter(o => String(o.seq_no) !== String(id));
+    localStorage.setItem("user_orders", JSON.stringify(next));
+    const deleted = JSON.parse(localStorage.getItem("deleted_orders") || "[]");
+    if (!deleted.includes(String(id))) {
+      deleted.push(String(id));
+      localStorage.setItem("deleted_orders", JSON.stringify(deleted));
+    }
   }
   ORDERS = ORDERS.filter(o => String(o.seq_no) !== String(id));
   applyFilter();

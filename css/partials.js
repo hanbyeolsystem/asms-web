@@ -25,7 +25,7 @@
           <a href="engineers.html">엔지니어</a> <span class="sep">|</span>
           <a href="manual.html">매뉴얼</a> <span class="sep">|</span>
           <a href="sms.html">SMS관리</a> <span class="sep">|</span>
-          <a href="login.html">로그아웃</a>
+          <a href="#" id="logoutLink">로그아웃</a>
         </div>
       </div>
       <div class="top-bar-divider1"></div>
@@ -46,7 +46,7 @@
           <a href="orders.html?status=출고">출고</a>
         </span>
         <span class="gap"></span>
-        김상환님 ※ 오늘 완료 건수는
+        <span id="userBadge">…님</span> ※ 오늘 완료 건수는
       </div>
     </div>
   `;
@@ -68,7 +68,7 @@
     if (el) el.innerHTML = `<b>${ampm} ${h}:${m}:${s}</b>`;
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  document.addEventListener("DOMContentLoaded", async function () {
     const h = document.getElementById("app-header");
     const f = document.getElementById("app-footer");
     if (h) h.innerHTML = headerHtml;
@@ -81,5 +81,27 @@
     document.querySelectorAll(".top-menu-wrap a").forEach(a => {
       if (a.getAttribute("href") === path) a.style.color = "#0000ff";
     });
+
+    // 로그아웃 링크 → supabase signOut
+    const out = document.getElementById("logoutLink");
+    if (out) out.addEventListener("click", e => {
+      e.preventDefault();
+      if (typeof window.logout === "function") window.logout();
+      else location.href = "login.html";
+    });
+
+    // 인증 가드 (login.html / index.html 제외) — 미로그인 시 login.html 로
+    const noGuard = ["login.html", "index.html", ""];
+    if (!noGuard.includes(path) && typeof window.requireLogin === "function") {
+      await window.requireLogin();
+    }
+
+    // 사용자 이름 표시
+    const badge = document.getElementById("userBadge");
+    if (badge && typeof window.currentUserName === "function") {
+      const n = await window.currentUserName();
+      badge.textContent = (n || "사용자") + "님";
+      try { localStorage.setItem("current_user", n || ""); } catch (e) {}
+    }
   });
 })();

@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>A/S Admin - 부품/상품 정보 입력/수정</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="css/partials.js"></script>
 <style>
   .pd-wrap { width: 800px; max-width: 100%; margin: 12px auto; box-sizing: border-box; }
@@ -150,6 +153,35 @@ async function load() {
     const w = document.getElementById("pdWarn");
     w.innerHTML = '제품번호가 지정되지 않았습니다. <a href="products.html">목록으로</a>';
     w.style.display = "block";
+    return;
+  }
+  let item = null;
+  if (window.SB_CONFIGURED) {
+    try {
+      item = await window.dbProductBySeq(seq);
+    } catch (e) {
+      const w = document.getElementById("pdWarn");
+      w.innerHTML = "데이터 로드 실패: " + e.message;
+      w.style.display = "block";
+      return;
+    }
+    if (!item) {
+      const w = document.getElementById("pdWarn");
+      w.innerHTML = `seq_no=${seq} 항목을 찾을 수 없습니다. <a href="products.html">목록으로</a>`;
+      w.style.display = "block";
+      return;
+    }
+    setRadio("mo_srfr",  item.courier === "YES" ? "y" : "n");
+    setRadio("mo_gubun", item.kind || "제품");
+    document.getElementById("mo_qty").value      = item.as_count || "";
+    document.getElementById("mo_engname").value  = item.name || "";
+    document.getElementById("mo_number").value   = item.code || "";
+    document.getElementById("mo_money").value    = item.money || "";
+    document.getElementById("mo_number_old").value = item.number_old || item.code || "";
+    document.getElementById("mDate").textContent = item.date || "";
+    document.getElementById("mSeq").textContent  = item.seq_no;
+    document.getElementById("metaInfo").style.display = "";
+    document.title = `[${item.code}] ${item.name} - 부품/상품 상세`;
     return;
   }
   let products;

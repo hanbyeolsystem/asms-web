@@ -5,12 +5,89 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>늑대와여우컴퓨터 - 로그인</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<style>
+  .login-msg { margin-top: 8px; min-height: 16px; font-size: 12px; }
+  .login-msg.err { color: #c00; }
+  .login-msg.ok  { color: #060; }
+  .login-mode { text-align:center; margin-top: 10px; font-size: 12px; }
+  .login-mode a { color: #06b; cursor: pointer; }
+</style>
 <script>
-function frm2_submit(){
-  // 데모용: 어떤 값이든 orders.html 로 이동
-  location.href = "orders.html";
+let MODE = "signin"; // 'signin' | 'signup' | 'recover'
+
+function setMode(m) {
+  MODE = m;
+  document.getElementById("modeTitle").textContent =
+    m === "signup"  ? "신규 가입" :
+    m === "recover" ? "비밀번호 재설정" : "로그인";
+  document.getElementById("loginBtn").textContent =
+    m === "signup"  ? "가입하기" :
+    m === "recover" ? "재설정 메일 발송" : "LOGIN";
+  document.getElementById("pwRow").style.display = (m === "recover") ? "none" : "";
+  document.getElementById("modeLinks").innerHTML =
+    m === "signin"
+      ? '<a onclick="setMode(\'signup\')">신규 가입</a> · <a onclick="setMode(\'recover\')">비밀번호 잊음</a>'
+      : '<a onclick="setMode(\'signin\')">로그인으로 돌아가기</a>';
+  showMsg("", "");
 }
-function onEnter(e){ if((e.keyCode||e.which)===13) frm2_submit(); }
+
+function showMsg(text, kind) {
+  const el = document.getElementById("loginMsg");
+  el.textContent = text;
+  el.className = "login-msg " + (kind || "");
+}
+
+async function submitForm() {
+  if (!window.SB_CONFIGURED) {
+    // 데모 모드 (Supabase 미설정)
+    showMsg("(데모 모드) 설정 없이도 로그인 됩니다.", "ok");
+    setTimeout(() => location.href = nextUrl(), 500);
+    return;
+  }
+  const email = document.getElementById("ID").value.trim();
+  const pw    = document.getElementById("PW").value;
+  if (!email) { showMsg("이메일을 입력하세요.", "err"); return; }
+
+  document.getElementById("loginBtn").disabled = true;
+  try {
+    if (MODE === "signin") {
+      const { error } = await window.sb.auth.signInWithPassword({ email, password: pw });
+      if (error) throw error;
+      showMsg("로그인 성공", "ok");
+      setTimeout(() => location.href = nextUrl(), 300);
+    } else if (MODE === "signup") {
+      const { error } = await window.sb.auth.signUp({ email, password: pw });
+      if (error) throw error;
+      showMsg("가입 메일을 발송했습니다. 메일함을 확인해 인증을 마쳐주세요.", "ok");
+    } else if (MODE === "recover") {
+      const { error } = await window.sb.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+      showMsg("재설정 링크를 메일로 발송했습니다.", "ok");
+    }
+  } catch (e) {
+    showMsg(e.message || String(e), "err");
+  } finally {
+    document.getElementById("loginBtn").disabled = false;
+  }
+}
+
+function nextUrl() {
+  const p = new URLSearchParams(location.search);
+  return p.get("next") || "orders.html";
+}
+
+function onEnter(e) { if ((e.keyCode || e.which) === 13) submitForm(); }
+
+// 이미 로그인되어 있으면 즉시 이동
+window.addEventListener("DOMContentLoaded", async () => {
+  if (window.SB_CONFIGURED && window.sb) {
+    const { data: { session } } = await window.sb.auth.getSession();
+    if (session) location.href = nextUrl();
+  }
+});
 </script>
 </head>
 <body>
@@ -20,24 +97,28 @@ function onEnter(e){ if((e.keyCode||e.which)===13) frm2_submit(); }
       <div class="login-logo">PACAI</div>
       <div style="text-align:center;margin-top:6px;font-size:12px;">
         <span style="color:#888">version 2.0</span> -
-        <span style="font-family:Dotum;font-size:11px;">관리자</span>
+        <span id="modeTitle" style="font-family:Dotum;font-size:11px;">로그인</span>
       </div>
     </div>
 
-    <form name="frm2" onsubmit="event.preventDefault();frm2_submit();" class="login-form">
+    <form name="frm2" onsubmit="event.preventDefault();submitForm();" class="login-form">
       <table border="0" cellspacing="0" cellpadding="0">
         <tr>
-          <td>아이디 :&nbsp;</td>
-          <td><input type="text" name="ID" id="ID" autofocus></td>
+          <td>이메일 :&nbsp;</td>
+          <td><input type="email" id="ID" autocomplete="email" autofocus></td>
         </tr>
-        <tr>
+        <tr id="pwRow">
           <td>비밀번호 :&nbsp;</td>
-          <td><input type="password" name="password" onkeypress="onEnter(event)"></td>
+          <td><input type="password" id="PW" autocomplete="current-password" onkeypress="onEnter(event)"></td>
         </tr>
       </table>
     </form>
 
-    <button type="button" class="login-btn" onclick="frm2_submit()">LOGIN</button>
+    <button type="button" class="login-btn" id="loginBtn" onclick="submitForm()">LOGIN</button>
+    <div class="login-msg" id="loginMsg"></div>
+    <div class="login-mode" id="modeLinks">
+      <a onclick="setMode('signup')">신규 가입</a> · <a onclick="setMode('recover')">비밀번호 잊음</a>
+    </div>
   </div>
 </div>
 </body>

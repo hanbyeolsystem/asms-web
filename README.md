@@ -56,5 +56,42 @@ python tools/harvest_recent.py        # 최근 변경분만 incremental
 
 ## 참고
 
-- 데이터는 클라이언트의 `localStorage` 에 변경분이 저장되며, 원본 JSON 은 변경되지 않습니다.
-- GitHub Pages 환경에서는 PII 데이터 파일이 없으므로 fallback 데모 데이터로 동작합니다.
+- Supabase 미설정 시: localStorage 에 변경분 저장 + JSON 파일 fetch 로 동작
+- Supabase 설정 시: 모든 페이지가 DB 와 직접 통신 + 인증 가드
+
+## Supabase 연동 (옵션)
+
+고객 데이터 등을 Supabase DB 에 두고 인증된 사용자만 접근하게 하려면:
+
+### 1) 프로젝트 생성
+- https://supabase.com → New Project (Region: Northeast Asia (Seoul))
+
+### 2) 스키마 실행
+- 대시보드 → SQL Editor → New Query
+- `sql/01_schema.sql` 내용 붙여넣기 → Run
+
+### 3) 데이터 마이그레이션
+PowerShell:
+```powershell
+cd asms-web
+pip install supabase
+$env:SUPABASE_URL = "https://xxx.supabase.co"
+$env:SUPABASE_SERVICE_KEY = "eyJ..." # service_role key (절대 공개 X)
+python tools/migrate_to_supabase.py --src "..\new-project-management\web\data"
+```
+
+### 4) RLS 활성화
+- SQL Editor 에서 `sql/02_rls.sql` 실행
+
+### 5) 클라이언트 설정
+`js/supabase-config.js` 의 두 줄을 본인 키로 교체 후 commit + push:
+```js
+window.SUPABASE_URL  = "https://xxx.supabase.co";
+window.SUPABASE_ANON = "eyJ..."; // anon public key (RLS 적용되어 안전)
+```
+
+### 6) 첫 사용자 가입
+- 사이트 접속 → 로그인 화면 → "신규 가입" → 이메일/비번 입력
+- Supabase 가 인증 메일 발송 → 메일 확인 후 로그인
+
+이후 추가 가입을 막으려면: Supabase 대시보드 → Authentication → Providers → Email → "Enable Sign ups" OFF

@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>A/S Admin - 신규접수</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="css/partials.js"></script>
 <!-- 다음 우편번호 서비스 (원본과 동일) -->
 <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
@@ -77,14 +80,19 @@ let CUSTOMERS = [];
 let PRODUCTS  = [];
 
 async function loadDB() {
-  try {
-    const r = await fetch("data/customers.json?ts=" + Date.now());
-    if (r.ok) CUSTOMERS = await r.json();
-  } catch (e) {}
-  try {
-    const r = await fetch("data/products.json?ts=" + Date.now());
-    if (r.ok) PRODUCTS = await r.json();
-  } catch (e) {}
+  if (window.SB_CONFIGURED) {
+    try { CUSTOMERS = (await window.dbCustomersAll()) || []; } catch (e) {}
+    try { PRODUCTS  = (await window.dbProductsAll())  || []; } catch (e) {}
+  } else {
+    try {
+      const r = await fetch("data/customers.json?ts=" + Date.now());
+      if (r.ok) CUSTOMERS = await r.json();
+    } catch (e) {}
+    try {
+      const r = await fetch("data/products.json?ts=" + Date.now());
+      if (r.ok) PRODUCTS = await r.json();
+    } catch (e) {}
+  }
   updateDBStatus();
 }
 
@@ -218,7 +226,7 @@ function radio(name) {
   return el ? el.value : "";
 }
 
-function go() {
+async function go() {
   const f = document.frm;
   if (!f.cu_name.value) { alert("고객 성명을 입력하세요"); f.cu_name.focus(); return; }
   if (!f.cu_tel1.value || !f.cu_tel2.value || !f.cu_tel3.value) {
@@ -235,11 +243,25 @@ function go() {
   const today_prefix = `${yy}${mm}${dd}-`;
   const date_str = `${t.getFullYear()}/${mm}/${dd}`;
 
-  const stored = JSON.parse(localStorage.getItem("user_orders") || "[]");
-  const todayCount = stored.filter(o => (o.order_no || "").startsWith(today_prefix)).length + 1;
+  let todayCount = 1;
+  let nextSeq = Date.now();
+  if (window.SB_CONFIGURED && window.sb) {
+    try {
+      const { data } = await window.sb.from("orders")
+        .select("seq_no, order_no")
+        .like("order_no", today_prefix + "%");
+      todayCount = (data || []).length + 1;
+      const { data: max } = await window.sb.from("orders")
+        .select("seq_no").order("seq_no", { ascending: false }).limit(1);
+      if (max && max[0]) nextSeq = (max[0].seq_no || 0) + 1;
+    } catch (e) { console.warn(e); }
+  } else {
+    const stored = JSON.parse(localStorage.getItem("user_orders") || "[]");
+    todayCount = stored.filter(o => (o.order_no || "").startsWith(today_prefix)).length + 1;
+  }
 
   const newOrder = {
-    seq_no:       Date.now(),
+    seq_no:       nextSeq,
     order_no:     today_prefix + todayCount,
     branch:       "대구",
     cu_name:      f.cu_name.value.trim(),
@@ -264,8 +286,15 @@ function go() {
     created_at:   t.toISOString(),
   };
 
-  stored.push(newOrder);
-  localStorage.setItem("user_orders", JSON.stringify(stored));
+  if (window.SB_CONFIGURED) {
+    delete newOrder.created_at;
+    const saved = await window.dbOrderUpsert(newOrder);
+    if (!saved) { alert("등록 실패 — 콘솔을 확인하세요."); return; }
+  } else {
+    const stored = JSON.parse(localStorage.getItem("user_orders") || "[]");
+    stored.push(newOrder);
+    localStorage.setItem("user_orders", JSON.stringify(stored));
+  }
 
   alert(`접수가 등록되었습니다.\n접수번호: ${newOrder.order_no}`);
   location.href = "orders.html";
