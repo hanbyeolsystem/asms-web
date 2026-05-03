@@ -341,10 +341,10 @@ document.addEventListener("DOMContentLoaded", load);
         <tr>
           <th>고객명</th>
           <td><input type="text" name="cu_name" size="14" readonly></td>
-          <th>임대제품</th>
-          <td><input type="text" name="cu_kind" size="22" readonly></td>
+          <th class="m-hide">임대제품</th>
+          <td class="m-hide"><input type="text" name="cu_kind" size="22" readonly></td>
         </tr>
-        <tr>
+        <tr class="m-hide">
           <th>주판매</th>
           <td><input type="text" name="co_name" size="20" readonly></td>
           <th>이메일</th>
@@ -357,8 +357,8 @@ document.addEventListener("DOMContentLoaded", load);
             <input type="text" name="cu_tel2" size="4" readonly>-
             <input type="text" name="cu_tel3" size="4" readonly>
           </td>
-          <th>회사 전화</th>
-          <td>
+          <th class="m-hide">회사 전화</th>
+          <td class="m-hide">
             <input type="text" name="co_tel1" size="3" readonly>-
             <input type="text" name="co_tel2" size="4" readonly>-
             <input type="text" name="co_tel3" size="4" readonly>
@@ -371,8 +371,8 @@ document.addEventListener("DOMContentLoaded", load);
             <input type="text" name="cu_mobile2" size="4" readonly>-
             <input type="text" name="cu_mobile3" size="4" readonly>
           </td>
-          <th>팩스</th>
-          <td>
+          <th class="m-hide">팩스</th>
+          <td class="m-hide">
             <input type="text" name="co_fax1" size="3" readonly>-
             <input type="text" name="co_fax2" size="4" readonly>-
             <input type="text" name="co_fax3" size="4" readonly>
@@ -388,13 +388,13 @@ document.addEventListener("DOMContentLoaded", load);
         </tr>
 
         <tr><th colspan="4" style="background:#bbbbff;">상품정보</th></tr>
-        <tr>
+        <tr class="m-hide">
           <th>상품 코드</th>
           <td><input type="text" name="mo_number" size="14" readonly></td>
           <th>상품명</th>
           <td><input type="text" name="mo_engname" size="22" readonly></td>
         </tr>
-        <tr>
+        <tr class="m-hide">
           <th>시리얼번호</th>
           <td><input type="text" name="mo_serial" size="14" readonly></td>
           <th>제조사</th>
@@ -452,9 +452,9 @@ document.addEventListener("DOMContentLoaded", load);
 
       <div class="btn-row">
         <button class="btn btn-primary" onclick="save()">저장</button>
-        <button class="btn" onclick="sendSms()">SMS 발송</button>
-        <button class="btn" onclick="printEstimate()">견적서 인쇄</button>
-        <button class="btn" onclick="del()">삭제</button>
+        <button class="btn m-hide" onclick="sendSms()">SMS 발송</button>
+        <button class="btn m-hide" onclick="printEstimate()">견적서 인쇄</button>
+        <button class="btn m-hide" onclick="del()">삭제</button>
         <button class="btn" onclick="location.href='orders.html'">목록으로</button>
       </div>
     </div>

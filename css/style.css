@@ -472,8 +472,8 @@ img { border: 0; vertical-align: middle; }
     font-weight: bold;
   }
   .top-menu-wrap .sep { display: none; }
-  /* 모바일에서 숨길 메뉴 (접수내역/고객관리/부품/상품/엔지니어/매뉴얼/SMS) */
-  .top-menu-wrap .m-hide { display: none !important; }
+  /* 모바일에서 숨길 요소 (헤더 메뉴 + order-detail 일부 행/버튼 등) */
+  .m-hide { display: none !important; }
 
   .top-bar-row2 {
     height: auto;
