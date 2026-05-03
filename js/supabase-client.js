@@ -132,7 +132,34 @@ async function dbProductBySeq(seq) {
 
 async function dbCustomersAll() {
   if (!window.SB_CONFIGURED) return null;
-  return await dbFetchAll("customers", "cu_name", true);
+  // 접수 횟수 많은 순으로 정렬
+  const PAGE = 1000; const all = []; let from = 0;
+  while (true) {
+    const { data, error } = await sb()
+      .from("customers").select("*")
+      .order("order_count", { ascending: false })
+      .order("cu_name", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) { console.error(error); return all; }
+    all.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
+async function dbCustomerInsert(row) {
+  if (!window.SB_CONFIGURED) return { error: "Supabase 미설정" };
+  const { data, error } = await sb().from("customers").insert(row).select().maybeSingle();
+  if (error) { console.error("[dbCustomerInsert]", error); return { error: error.message }; }
+  return { data };
+}
+
+async function dbCustomerUpdate(cu_number, patch) {
+  if (!window.SB_CONFIGURED) return { error: "Supabase 미설정" };
+  const { data, error } = await sb().from("customers").update(patch).eq("cu_number", cu_number).select().maybeSingle();
+  if (error) { console.error("[dbCustomerUpdate]", error); return { error: error.message }; }
+  return { data };
 }
 
 async function dbEngineersAll() {
@@ -175,6 +202,8 @@ window.dbCustomersAll   = dbCustomersAll;
 window.dbEngineersAll   = dbEngineersAll;
 window.fnCreateEngineer = fnCreateEngineer;
 window.fnDeleteEngineer = fnDeleteEngineer;
+window.dbCustomerInsert = dbCustomerInsert;
+window.dbCustomerUpdate = dbCustomerUpdate;
 
 // ---------- 현재 사용자 이름 (헤더용) ----------
 async function currentUserName() {
