@@ -52,12 +52,24 @@ window.logout = logout;
 // ---------- 데이터 래퍼 ----------
 const sb = () => window.sb;
 
+async function dbFetchAll(table, orderCol, ascending = false) {
+  const PAGE = 1000;
+  const all = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await sb()
+      .from(table).select("*").order(orderCol, { ascending }).range(from, from + PAGE - 1);
+    if (error) { console.error(error); return all; }
+    all.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
 async function dbOrdersAll() {
   if (!window.SB_CONFIGURED) return null;
-  const { data, error } = await sb()
-    .from("orders").select("*").order("seq_no", { ascending: false });
-  if (error) { console.error(error); return []; }
-  return data;
+  return await dbFetchAll("orders", "seq_no", false);
 }
 
 async function dbOrderBySeq(seq) {
@@ -85,10 +97,7 @@ async function dbOrderDelete(seq) {
 
 async function dbProductsAll() {
   if (!window.SB_CONFIGURED) return null;
-  const { data, error } = await sb()
-    .from("products").select("*").order("seq_no", { ascending: false });
-  if (error) { console.error(error); return []; }
-  return data;
+  return await dbFetchAll("products", "seq_no", false);
 }
 
 async function dbProductBySeq(seq) {
@@ -101,10 +110,7 @@ async function dbProductBySeq(seq) {
 
 async function dbCustomersAll() {
   if (!window.SB_CONFIGURED) return null;
-  const { data, error } = await sb()
-    .from("customers").select("*").order("cu_name");
-  if (error) { console.error(error); return []; }
-  return data;
+  return await dbFetchAll("customers", "cu_name", true);
 }
 
 async function dbEngineersAll() {
