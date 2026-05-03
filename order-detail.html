@@ -160,7 +160,7 @@ function populate(o, listOrder) {
   set("zipcode1", o.zipcode1 || o.zipcode || "");
   set("address1", o.address1);
   set("address2", o.address2);
-  setRadio("cu_kind", o.cu_kind);
+  set("cu_kind", o.cu_kind);  // 임대제품 (text input)
 
   ["cu_tel", "co_tel", "cu_mobile", "co_fax"].forEach(prefix => {
     const v = (o[prefix] || "").split("-");
@@ -224,7 +224,7 @@ async function save() {
   o.zipcode1     = f.zipcode1.value;
   o.cu_tel       = [f.cu_tel1.value, f.cu_tel2.value, f.cu_tel3.value].filter(Boolean).join("-");
   o.cu_mobile    = [f.cu_mobile1.value, f.cu_mobile2.value, f.cu_mobile3.value].filter(Boolean).join("-");
-  o.cu_kind      = radio("cu_kind");
+  o.cu_kind      = f.cu_kind.value;  // 임대제품
   o.mo_serial    = f.mo_serial.value;
   o.cu_want      = f.cu_want.value;
   const prev = (o.re_content || "").trim();
@@ -324,17 +324,12 @@ document.addEventListener("DOMContentLoaded", load);
         <tr>
           <th>고객명</th>
           <td><input type="text" name="cu_name" size="14"></td>
-          <th>고객 구분</th>
-          <td>
-            <label><input type="radio" name="cu_kind" value="개인">개인</label>
-            <label><input type="radio" name="cu_kind" value="사업">사업</label>
-            <label><input type="radio" name="cu_kind" value="법인">법인</label>
-            <label><input type="radio" name="cu_kind" value="기타">기타</label>
-          </td>
+          <th>임대제품</th>
+          <td><input type="text" name="cu_kind" size="22" maxlength="40" placeholder="임대제품명"></td>
         </tr>
         <tr>
-          <th>회사명</th>
-          <td><input type="text" name="co_name" size="20"></td>
+          <th>주판매</th>
+          <td><input type="text" name="co_name" size="20" maxlength="40" placeholder="주판매 제품"></td>
           <th>이메일</th>
           <td><input type="text" name="cu_mail" size="22"></td>
         </tr>
