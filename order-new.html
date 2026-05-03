@@ -278,7 +278,7 @@ async function go() {
     cu_mobile:    [f.cu_mobile1.value, f.cu_mobile2.value, f.cu_mobile3.value].filter(Boolean).join("-"),
     co_fax:       [f.co_fax1.value, f.co_fax2.value, f.co_fax3.value].filter(Boolean).join("-"),
     cu_mail:      f.cu_mail.value,
-    zipcode:      f.zipcode1.value,
+    zipcode1:     f.zipcode1.value,
     address1:     f.address1.value,
     address2:     f.address2.value,
     mo_number:    f.mo_number.value,
@@ -288,8 +288,8 @@ async function go() {
 
   if (window.SB_CONFIGURED) {
     delete newOrder.created_at;
-    const saved = await window.dbOrderUpsert(newOrder);
-    if (!saved) { alert("등록 실패 — 콘솔을 확인하세요."); return; }
+    const res = await window.dbOrderUpsert(newOrder);
+    if (res?.error) { alert("등록 실패: " + res.error); return; }
   } else {
     const stored = JSON.parse(localStorage.getItem("user_orders") || "[]");
     stored.push(newOrder);

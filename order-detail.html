@@ -221,7 +221,7 @@ async function save() {
   o.cu_mail      = f.cu_mail.value;
   o.address1     = f.address1.value;
   o.address2     = f.address2.value;
-  o.zipcode      = f.zipcode1.value;
+  o.zipcode1     = f.zipcode1.value;
   o.cu_tel       = [f.cu_tel1.value, f.cu_tel2.value, f.cu_tel3.value].filter(Boolean).join("-");
   o.cu_mobile    = [f.cu_mobile1.value, f.cu_mobile2.value, f.cu_mobile3.value].filter(Boolean).join("-");
   o.cu_kind      = radio("cu_kind");
@@ -247,8 +247,8 @@ async function save() {
   o.re_now       = radio("re_now"); o.status = o.re_now;
   if (window.SB_CONFIGURED) {
     delete o.created_at; delete o.updated_at;
-    const saved = await window.dbOrderUpsert(o);
-    if (!saved) { alert("저장 실패 — 콘솔을 확인하세요."); return; }
+    const res = await window.dbOrderUpsert(o);
+    if (res?.error) { alert("저장 실패: " + res.error); return; }
   } else {
     u[idx] = o;
     localStorage.setItem("user_orders", JSON.stringify(u));
@@ -261,8 +261,8 @@ async function del() {
   if (!CURRENT) return;
   if (!confirm("정말로 삭제하시겠습니까?")) return;
   if (window.SB_CONFIGURED) {
-    const ok = await window.dbOrderDelete(CURRENT.seq_no);
-    if (!ok) { alert("삭제 실패 — 콘솔을 확인하세요."); return; }
+    const res = await window.dbOrderDelete(CURRENT.seq_no);
+    if (res?.error) { alert("삭제 실패: " + res.error); return; }
   } else {
     const u = JSON.parse(localStorage.getItem("user_orders") || "[]");
     const next = u.filter(o => String(o.seq_no) !== String(CURRENT.seq_no));

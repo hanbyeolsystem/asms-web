@@ -103,18 +103,18 @@ async function dbOrderBySeq(seq) {
 }
 
 async function dbOrderUpsert(row) {
-  if (!window.SB_CONFIGURED) return null;
+  if (!window.SB_CONFIGURED) return { error: "Supabase 미설정" };
   const { data, error } = await sb()
     .from("orders").upsert(row, { onConflict: "seq_no" }).select().maybeSingle();
-  if (error) { console.error(error); return null; }
-  return data;
+  if (error) { console.error("[dbOrderUpsert]", error); return { error: error.message }; }
+  return { data };
 }
 
 async function dbOrderDelete(seq) {
-  if (!window.SB_CONFIGURED) return false;
+  if (!window.SB_CONFIGURED) return { error: "Supabase 미설정" };
   const { error } = await sb().from("orders").delete().eq("seq_no", Number(seq));
-  if (error) { console.error(error); return false; }
-  return true;
+  if (error) { console.error("[dbOrderDelete]", error); return { error: error.message }; }
+  return { ok: true };
 }
 
 async function dbProductsAll() {
