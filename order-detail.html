@@ -43,6 +43,49 @@
   .view-table textarea[readonly] {
     cursor: default;
   }
+
+  /* ---------- 견적서 인쇄: A4 1장 ---------- */
+  @media print {
+    @page { size: A4 portrait; margin: 8mm; }
+    html, body { background: #fff !important; }
+    body { font-size: 10.5px; }
+    /* 인쇄에서 제외 */
+    .app-header, .app-footer,
+    .btn-row, .data-warning,
+    .print-hide {
+      display: none !important;
+    }
+
+    .content-wrap { width: 100% !important; padding: 0 !important; margin: 0 !important; }
+    .page-title {
+      width: 100% !important; height: auto !important;
+      padding: 4px 8px !important; font-size: 13px !important;
+      background: #000068 !important; color: #fff !important;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .info-bar {
+      width: 100% !important; margin: 4px 0 6px 0 !important;
+      padding: 4px 8px !important; font-size: 10.5px !important;
+      gap: 8px !important;
+    }
+    .form-table { width: 100% !important; font-size: 10.5px !important; page-break-inside: avoid; }
+    .form-table th, .form-table td {
+      padding: 2px 5px !important; line-height: 1.25 !important;
+    }
+    .form-table th {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .view-table input[readonly], .view-table input {
+      border: 0 !important; background: transparent !important;
+      padding: 0 2px !important; font-size: 10.5px !important;
+    }
+    .view-table textarea {
+      background: transparent !important; border: 1px solid #ccc !important;
+      font-size: 10.5px !important; resize: none;
+    }
+    /* 라디오 — 선택된 값만 표시되도록 회색 처리 (시각적 압축) */
+    input[type="radio"] { transform: scale(0.85); }
+  }
 </style>
 <script>
 let CURRENT = null;
@@ -429,11 +472,11 @@ document.addEventListener("DOMContentLoaded", load);
             <label><input type="radio" name="re_now" value="출고">출고</label>
           </td>
         </tr>
-        <tr>
+        <tr class="print-hide">
           <th>처리자</th>
           <td colspan="3"><input type="text" name="work_name" size="14"></td>
         </tr>
-        <tr>
+        <tr class="print-hide">
           <th>기존의견 및<br>통보여부</th>
           <td colspan="3">
             <div id="reContentView"
@@ -442,7 +485,7 @@ document.addEventListener("DOMContentLoaded", load);
             <input type="hidden" name="re_content">
           </td>
         </tr>
-        <tr>
+        <tr class="print-hide">
           <th>추가의견 및<br>통보여부</th>
           <td colspan="3"><textarea name="re_content2" placeholder="처리 내용 입력 (저장 시 기존의견에 누적)"></textarea></td>
         </tr>
