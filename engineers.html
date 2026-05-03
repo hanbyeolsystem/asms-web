@@ -5,11 +5,124 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>A/S Admin - 엔지니어</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="css/partials.js"></script>
+<style>
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; z-index: 1000; }
+  .modal-backdrop.show { display: flex; align-items: center; justify-content: center; }
+  .modal-box { background: #fff; width: 460px; max-width: 92vw; border-radius: 6px; padding: 0; overflow: hidden; }
+  .modal-header { background: #1e2939; color: #fff; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
+  .modal-header span { font-weight: bold; font-size: 14px; }
+  .close-btn { background: none; border: none; color: #fff; font-size: 18px; cursor: pointer; }
+  .modal-body { padding: 16px; }
+  .modal-body table { width: 100%; border-collapse: collapse; }
+  .modal-body td { padding: 6px 4px; font-size: 13px; }
+  .modal-body td.lbl { width: 100px; color: #555; }
+  .modal-body input, .modal-body select { width: 100%; padding: 6px 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; }
+  .modal-foot { padding: 10px 14px; border-top: 1px solid #eee; text-align: right; }
+  .modal-foot button { padding: 6px 14px; font-size: 13px; cursor: pointer; margin-left: 6px; }
+  .modal-msg { font-size: 12px; min-height: 16px; padding: 6px 10px; }
+  .modal-msg.err { color: #c00; }
+  .modal-msg.ok { color: #060; }
+</style>
 <script>
-function godel(id){
-  if(confirm("정말로 삭제하시겠습니까??")) alert("(데모) 삭제: " + id);
+let ENGINEERS = [];
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 }
+
+async function loadList() {
+  const tb = document.getElementById("engBody");
+  tb.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;">불러오는 중...</td></tr>';
+  if (!window.SB_CONFIGURED) {
+    tb.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#a06;">Supabase 미설정 - js/supabase-config.js 참고</td></tr>';
+    return;
+  }
+  const data = await window.dbEngineersAll();
+  ENGINEERS = data || [];
+  renderList(getQueryFilter(ENGINEERS));
+}
+
+function getQueryFilter(rows) {
+  const f = document.getElementById("f_name").value;
+  const q = (document.getElementById("f_value").value || "").trim().toLowerCase();
+  if (!q) return rows;
+  return rows.filter(r => String(r[f === "en_id" ? "en_id" : "en_name"] || "").toLowerCase().includes(q));
+}
+
+function renderList(rows) {
+  const tb = document.getElementById("engBody");
+  document.getElementById("totalCount").textContent = rows.length;
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;">등록된 엔지니어가 없습니다.</td></tr>';
+    return;
+  }
+  tb.innerHTML = rows.map(r => `
+    <tr>
+      <td>${escapeHtml(r.en_branch)}</td>
+      <td>${escapeHtml(r.en_id)}</td>
+      <td>${escapeHtml(r.en_name)}</td>
+      <td>${escapeHtml(r.en_tel || "")}</td>
+      <td>${escapeHtml(r.en_mobile || "")}</td>
+      <td>${escapeHtml((r.created_at || "").substring(0, 10))}</td>
+      <td><a href="javascript:godel('${escapeHtml(r.en_id)}', '${escapeHtml(r.en_name)}');">삭제</a></td>
+    </tr>
+  `).join("");
+}
+
+function applyFilter() { renderList(getQueryFilter(ENGINEERS)); }
+
+function openAddModal() {
+  document.getElementById("addMsg").textContent = "";
+  document.getElementById("addForm").reset();
+  document.getElementById("addModal").classList.add("show");
+  setTimeout(() => document.getElementById("a_email").focus(), 50);
+}
+function closeAddModal() { document.getElementById("addModal").classList.remove("show"); }
+
+async function submitAdd() {
+  const f = document.getElementById("addForm");
+  const email = f.a_email.value.trim();
+  const password = f.a_password.value;
+  const en_name = f.a_name.value.trim();
+  const en_id = f.a_id.value.trim() || (email.includes("@") ? email.split("@")[0] : email);
+  const en_branch = f.a_branch.value || "대구";
+  const en_tel = f.a_tel.value.trim();
+  const en_mobile = f.a_mobile.value.trim();
+  const en_role = f.a_role.value || "engineer";
+
+  const msg = document.getElementById("addMsg");
+  msg.className = "modal-msg";
+  if (!email || !password || !en_name) { msg.textContent = "이메일/비밀번호/성명은 필수"; msg.classList.add("err"); return; }
+  if (password.length < 6) { msg.textContent = "비밀번호는 6자 이상"; msg.classList.add("err"); return; }
+
+  document.getElementById("addBtn").disabled = true;
+  msg.textContent = "처리 중...";
+  const { data, error } = await window.fnCreateEngineer({
+    email, password, en_id, en_name, en_branch, en_tel, en_mobile, en_role,
+  });
+  document.getElementById("addBtn").disabled = false;
+  if (error) { msg.textContent = "실패: " + error; msg.classList.add("err"); return; }
+  msg.textContent = "등록 완료"; msg.classList.add("ok");
+  await loadList();
+  setTimeout(closeAddModal, 600);
+}
+
+async function godel(en_id, en_name) {
+  if (!confirm(`엔지니어 [${en_name} (${en_id})] 를 삭제하시겠습니까?\n로그인 계정도 함께 제거됩니다.`)) return;
+  const { error } = await window.fnDeleteEngineer(en_id);
+  if (error) { alert("삭제 실패: " + error); return; }
+  await loadList();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("f_value").addEventListener("input", applyFilter);
+  document.getElementById("f_name").addEventListener("change", applyFilter);
+  loadList();
+});
 </script>
 </head>
 <body>
@@ -22,22 +135,22 @@ function godel(id){
 
       <table class="outer-table"><tr><td>
         <table class="search-box">
-          <form name="frm1" method="post" action="engineers.html" onsubmit="event.preventDefault();">
+          <form name="frm1" onsubmit="event.preventDefault();applyFilter();">
           <tr>
             <td>
-              <select name="f_name">
+              <select name="f_name" id="f_name">
                 <option value="en_id">엔지니어 아이디</option>
                 <option value="en_name">엔지니어 성명</option>
               </select>
-              <input type="text" name="f_value">
+              <input type="text" name="f_value" id="f_value">
               <input type="submit" value="검색" name="submit">
-              <input type="button" value="신규입력" onclick="alert('(데모) 신규입력');">
+              <input type="button" value="신규입력" onclick="openAddModal()">
             </td>
             <td><a href="engineers.html">[처음으로]</a></td>
           </tr>
           </form>
           <tr>
-            <td colspan="2" class="alt right">검색된 게시물수 : <b>27</b>명</td>
+            <td colspan="2" class="alt right">검색된 게시물수 : <b id="totalCount">0</b>명</td>
           </tr>
         </table>
 
@@ -53,14 +166,8 @@ function godel(id){
               <th width="10%">삭제</th>
             </tr>
           </thead>
-          <tbody>
-            <tr><td>대구</td><td><a href="#">iruumee</a></td><td>이루미</td><td></td><td>010-2559-8999</td><td>2022년 10월 28일</td><td><a href="javascript:godel('iruumee');">삭제</a></td></tr>
-            <tr><td>대구</td><td><a href="#">aajieun</a></td><td>안지은</td><td></td><td>010-5036-4680</td><td>2020년 11월 30일</td><td><a href="javascript:godel('aajieun');">삭제</a></td></tr>
-            <tr><td>대구</td><td><a href="#">harris</a></td><td>해리스</td><td>010-7603-7889</td><td></td><td>2019년 05월 22일</td><td><a href="javascript:godel('harris');">삭제</a></td></tr>
-            <tr><td>대구</td><td><a href="#">ljt3539</a></td><td>이정태</td><td>053-954-3539</td><td>010-3510-3539</td><td>2021년 01월 15일</td><td><a href="javascript:godel('ljt3539');">삭제</a></td></tr>
-            <tr><td>대구</td><td><a href="#">mysay21</a></td><td>박상철</td><td></td><td>010-4440-0870</td><td>2019년 02월 10일</td><td><a href="javascript:godel('mysay21');">삭제</a></td></tr>
-            <tr><td>대구</td><td><a href="#">zxcvcc24</a></td><td>최진규</td><td>010-7167-1108</td><td>010-7167-1108</td><td>2018년 01월 22일</td><td><a href="javascript:godel('zxcvcc24');">삭제</a></td></tr>
-            <tr><td>대구</td><td><a href="#">wolffox</a></td><td>김상환</td><td>053-587-4114</td><td>011-507-0885</td><td>2009년 03월 02일</td><td><a href="javascript:godel('wolffox');">삭제</a></td></tr>
+          <tbody id="engBody">
+            <tr><td colspan="7" style="text-align:center;padding:20px;">불러오는 중...</td></tr>
           </tbody>
         </table>
 
@@ -69,6 +176,48 @@ function godel(id){
   </main>
 
   <footer class="app-footer" id="app-footer"></footer>
+</div>
+
+<!-- 신규 엔지니어 추가 모달 -->
+<div id="addModal" class="modal-backdrop" onclick="if(event.target===this)closeAddModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span>신규 엔지니어 등록</span>
+      <button type="button" class="close-btn" onclick="closeAddModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="addForm" onsubmit="event.preventDefault();submitAdd();">
+        <table>
+          <tr><td class="lbl">이메일 *</td><td><input type="email" id="a_email" name="a_email" required placeholder="user@example.com"></td></tr>
+          <tr><td class="lbl">비밀번호 *</td><td><input type="text" id="a_password" name="a_password" required placeholder="6자 이상" autocomplete="new-password"></td></tr>
+          <tr><td class="lbl">성명 *</td><td><input type="text" id="a_name" name="a_name" required placeholder="홍길동"></td></tr>
+          <tr><td class="lbl">아이디</td><td><input type="text" id="a_id" name="a_id" placeholder="(미입력 시 이메일 prefix 자동)"></td></tr>
+          <tr><td class="lbl">근무지역</td><td>
+            <select id="a_branch" name="a_branch">
+              <option value="대구">대구</option>
+              <option value="서울">서울</option>
+              <option value="부산">부산</option>
+              <option value="대전">대전</option>
+              <option value="광주">광주</option>
+            </select>
+          </td></tr>
+          <tr><td class="lbl">전화번호</td><td><input type="text" id="a_tel" name="a_tel" placeholder="053-587-4114"></td></tr>
+          <tr><td class="lbl">휴대폰</td><td><input type="text" id="a_mobile" name="a_mobile" placeholder="010-0000-0000"></td></tr>
+          <tr><td class="lbl">권한</td><td>
+            <select id="a_role" name="a_role">
+              <option value="engineer">엔지니어</option>
+              <option value="admin">관리자</option>
+            </select>
+          </td></tr>
+        </table>
+      </form>
+    </div>
+    <div class="modal-msg" id="addMsg"></div>
+    <div class="modal-foot">
+      <button type="button" onclick="closeAddModal()">취소</button>
+      <button type="button" id="addBtn" onclick="submitAdd()">등록</button>
+    </div>
+  </div>
 </div>
 </body>
 </html>

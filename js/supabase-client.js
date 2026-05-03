@@ -107,6 +107,36 @@ async function dbCustomersAll() {
   return data;
 }
 
+async function dbEngineersAll() {
+  if (!window.SB_CONFIGURED) return null;
+  const { data, error } = await sb()
+    .from("engineers").select("*").order("created_at", { ascending: false });
+  if (error) { console.error(error); return []; }
+  return data;
+}
+
+async function fnCreateEngineer(payload) {
+  if (!window.SB_CONFIGURED) return { error: "Supabase 미설정" };
+  const { data, error } = await sb().functions.invoke("admin-engineers", {
+    method: "POST",
+    body: payload,
+  });
+  if (error) return { error: error.message };
+  if (data?.error) return { error: data.error };
+  return { data };
+}
+
+async function fnDeleteEngineer(en_id) {
+  if (!window.SB_CONFIGURED) return { error: "Supabase 미설정" };
+  const { data, error } = await sb().functions.invoke("admin-engineers", {
+    method: "DELETE",
+    body: { en_id },
+  });
+  if (error) return { error: error.message };
+  if (data?.error) return { error: data.error };
+  return { data };
+}
+
 window.dbOrdersAll      = dbOrdersAll;
 window.dbOrderBySeq     = dbOrderBySeq;
 window.dbOrderUpsert    = dbOrderUpsert;
@@ -114,6 +144,9 @@ window.dbOrderDelete    = dbOrderDelete;
 window.dbProductsAll    = dbProductsAll;
 window.dbProductBySeq   = dbProductBySeq;
 window.dbCustomersAll   = dbCustomersAll;
+window.dbEngineersAll   = dbEngineersAll;
+window.fnCreateEngineer = fnCreateEngineer;
+window.fnDeleteEngineer = fnDeleteEngineer;
 
 // ---------- 현재 사용자 이름 (헤더용) ----------
 async function currentUserName() {
