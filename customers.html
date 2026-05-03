@@ -59,10 +59,7 @@
 
       <div class="stat-bar">
         <span>총 고객: <b id="cnt-total">0</b></span>
-        <span>개인: <b id="cnt-개인">0</b></span>
-        <span>사업: <b id="cnt-사업">0</b></span>
-        <span>법인: <b id="cnt-법인">0</b></span>
-        <span>기타: <b id="cnt-기타">0</b></span>
+        <span id="cnt-by-kind"></span>
         <span id="harvestStatus" style="margin-left:auto;color:#888;"></span>
       </div>
 
@@ -228,11 +225,17 @@ function goPage(n) {
 }
 
 function drawStats() {
-  document.getElementById("cnt-total").textContent = CUSTOMERS.length;
-  ["개인","사업","법인","기타"].forEach(k => {
-    document.getElementById("cnt-" + k).textContent =
-      CUSTOMERS.filter(r => r.cu_kind === k).length;
+  document.getElementById("cnt-total").textContent = CUSTOMERS.length.toLocaleString();
+  const counts = {};
+  CUSTOMERS.forEach(r => {
+    const k = r.cu_kind || "(빈값)";
+    counts[k] = (counts[k] || 0) + 1;
   });
+  const html = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `<span style="margin-right:14px;">${esc(k)}: <b>${n.toLocaleString()}</b></span>`)
+    .join(" ");
+  document.getElementById("cnt-by-kind").innerHTML = html;
 }
 
 function esc(s) {
