@@ -69,12 +69,13 @@ img { border: 0; vertical-align: middle; }
 }
 
 .top-menu-wrap {
-  width: 718px;
+  width: auto;
   border: 1px solid #cccccc;
   border-bottom: 0;
   background: #ffffff;
   padding: 4px 6px;
   margin-left: 8px;
+  white-space: nowrap;
 }
 .top-menu-wrap a {
   margin: 0 4px;
