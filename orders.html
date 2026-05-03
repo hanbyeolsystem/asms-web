@@ -127,9 +127,11 @@ const FALLBACK_ORDERS = [
   { seq_no: 54810, order_no: "260428-5",  branch: "대구", cu_name: "김용부면장님",               status: "출고", product: "임대초기설치",     serial: "PC외",     process_date: "2026/04/28", receiver: "조이준",  kind2: "일반" },
 ];
 
-let ORDERS   = [];
-let FILTERED = [];
-const PAGE_SIZE = 15;          // 원본과 동일하게 15건/페이지
+let ORDERS   = [];        // 폴백 모드용 (전체 적재)
+let FILTERED = [];        // 폴백 모드 필터 결과
+let CURRENT_PAGE_ROWS = []; // SB 모드에서 현재 페이지의 rows
+let TOTAL_ROWS = 0;       // SB 모드에서 검색 결과 총 행수
+const PAGE_SIZE = 15;
 let CURRENT_PAGE = 1;
 
 function getUserOrders() {
@@ -166,15 +168,16 @@ function mergeUser() {
 }
 
 async function load() {
+  if (window.SB_CONFIGURED) {
+    // 서버 측 페이지네이션: 첫 페이지만 즉시 fetch
+    const initStatus = new URLSearchParams(location.search).get("status") || "";
+    setStatus(initStatus);   // setStatus 가 applyFilter() 호출
+    return;
+  }
   try {
-    if (window.SB_CONFIGURED) {
-      const data = await window.dbOrdersAll();
-      ORDERS = data || FALLBACK_ORDERS;
-    } else {
-      const r = await fetch("data/orders.json?ts=" + Date.now());
-      if (r.ok) ORDERS = await r.json();
-      else      ORDERS = FALLBACK_ORDERS;
-    }
+    const r = await fetch("data/orders.json?ts=" + Date.now());
+    if (r.ok) ORDERS = await r.json();
+    else      ORDERS = FALLBACK_ORDERS;
   } catch (e) {
     ORDERS = FALLBACK_ORDERS;
   }
@@ -208,12 +211,12 @@ async function loadStatus() {
   } catch (e) {}
 }
 
-function setStatus(v) {
+async function setStatus(v) {
   document.querySelectorAll("input[name='re_now']").forEach(r => { r.checked = (r.value === v); });
   document.querySelectorAll("#statusTabs a").forEach(a => {
     a.classList.toggle("active", (a.dataset.status || "") === v);
   });
-  applyFilter();
+  await applyFilter();
 }
 window.setStatus = setStatus;
 
@@ -236,10 +239,26 @@ function getStatus() {
   return el ? el.value : "";
 }
 
-function applyFilter() {
+async function applyFilter(resetPage = true) {
+  if (resetPage) CURRENT_PAGE = 1;
   const f = document.getElementById("f_name").value;
-  const q = document.getElementById("f_value").value.trim().toLowerCase();
+  const q = document.getElementById("f_value").value.trim();
   const s = getStatus();
+
+  if (window.SB_CONFIGURED) {
+    document.getElementById("orderBody").innerHTML =
+      "<tr><td colspan='9' style='text-align:center;padding:20px;color:#888;'>불러오는 중...</td></tr>";
+    const res = await window.dbOrdersPage({
+      page: CURRENT_PAGE, pageSize: PAGE_SIZE,
+      status: s, searchField: f, searchValue: q,
+    });
+    CURRENT_PAGE_ROWS = res?.rows || [];
+    TOTAL_ROWS = res?.total || 0;
+    drawSb();
+    return;
+  }
+
+  // 폴백 모드 (Supabase 미설정)
   FILTERED = ORDERS.filter(r => {
     if (s && r.status !== s) return false;
     if (q) {
@@ -249,11 +268,10 @@ function applyFilter() {
       } else {
         v = (r[f] || "").toString().toLowerCase();
       }
-      if (!v.includes(q)) return false;
+      if (!v.includes(q.toLowerCase())) return false;
     }
     return true;
   });
-  CURRENT_PAGE = 1;
   draw();
 }
 
@@ -298,6 +316,36 @@ function draw() {
   drawPager(totalPages);
 }
 
+function drawSb() {
+  const tb = document.getElementById("orderBody");
+  document.getElementById("hitCount").textContent = TOTAL_ROWS.toLocaleString();
+  if (!CURRENT_PAGE_ROWS.length) {
+    tb.innerHTML = "<tr><td colspan='9'>검색 결과가 없습니다.</td></tr>";
+    document.getElementById("pageInfo").textContent = "";
+    document.getElementById("pager").innerHTML = "";
+    return;
+  }
+  const totalPages = Math.max(1, Math.ceil(TOTAL_ROWS / PAGE_SIZE));
+  if (CURRENT_PAGE > totalPages) CURRENT_PAGE = totalPages;
+  const start = (CURRENT_PAGE - 1) * PAGE_SIZE;
+  tb.innerHTML = CURRENT_PAGE_ROWS.map(r => `
+    <tr>
+      <td><a href="order-detail.html?seq_no=${r.seq_no}">${esc(r.order_no)}</a></td>
+      <td>${esc(r.kind2)}</td>
+      <td class="st-${esc(r.status)}">${esc(r.status)}</td>
+      <td class="cu" title="${esc(r.cu_name)}">${esc(r.cu_name)}</td>
+      <td class="product"><a href="order-detail.html?seq_no=${r.seq_no}">${esc(r.product)}</a></td>
+      <td>${esc(r.serial)}</td>
+      <td>${esc(r.process_date)}</td>
+      <td>${esc(r.receiver)}</td>
+      <td><a href="javascript:godel('${r.seq_no}')">삭제</a></td>
+    </tr>
+  `).join("");
+  document.getElementById("pageInfo").textContent =
+    `${(start + 1).toLocaleString()}-${Math.min(start + PAGE_SIZE, TOTAL_ROWS).toLocaleString()} / ${TOTAL_ROWS.toLocaleString()}건`;
+  drawPager(totalPages);
+}
+
 function drawPager(total) {
   const p = document.getElementById("pager");
   if (total <= 1) { p.innerHTML = ""; return; }
@@ -312,7 +360,16 @@ function drawPager(total) {
   p.innerHTML = html;
 }
 
-function goPage(n) { CURRENT_PAGE = n; draw(); window.scrollTo(0, 0); }
+async function goPage(n) {
+  CURRENT_PAGE = n;
+  if (window.SB_CONFIGURED) {
+    await applyFilter(false);
+  } else {
+    draw();
+  }
+  window.scrollTo(0, 0);
+}
+window.goPage = goPage;
 async function godel(id) {
   if (!confirm("정말로 삭제하시겠습니까??")) return;
   if (window.SB_CONFIGURED) {

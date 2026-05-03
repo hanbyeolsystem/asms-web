@@ -72,6 +72,28 @@ async function dbOrdersAll() {
   return await dbFetchAll("orders", "seq_no", false);
 }
 
+// 서버 측 페이지네이션 + 필터 (대용량 테이블용)
+async function dbOrdersPage({ page = 1, pageSize = 15, status = "", searchField = "", searchValue = "" } = {}) {
+  if (!window.SB_CONFIGURED) return null;
+  const from = (page - 1) * pageSize;
+  const to   = from + pageSize - 1;
+  let q = sb().from("orders").select("*", { count: "exact" });
+  if (status) q = q.eq("status", status);
+  if (searchValue) {
+    const v = String(searchValue).replace(/%/g, "");
+    if (searchField === "phone") {
+      q = q.or(`cu_tel.ilike.%${v}%,cu_mobile.ilike.%${v}%`);
+    } else if (searchField) {
+      q = q.ilike(searchField, `%${v}%`);
+    }
+  }
+  q = q.order("seq_no", { ascending: false }).range(from, to);
+  const { data, count, error } = await q;
+  if (error) { console.error(error); return { rows: [], total: 0 }; }
+  return { rows: data || [], total: count || 0 };
+}
+window.dbOrdersPage = dbOrdersPage;
+
 async function dbOrderBySeq(seq) {
   if (!window.SB_CONFIGURED) return null;
   const { data, error } = await sb()
