@@ -1,10 +1,9 @@
 // Supabase Edge Function: admin-engineers
-// POST   → 새 엔지니어(사용자) 생성: email/password/en_id/en_name/...
-// DELETE → 엔지니어 삭제: { en_id } 또는 { user_id }
+// POST   → 새 엔지니어(사용자) 생성
+// DELETE → 엔지니어 삭제
 // 인증된 사용자만 호출 가능 (verify_jwt = true)
 
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -12,20 +11,19 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, DELETE, OPTIONS",
 };
 
-const json = (body: unknown, status = 200) =>
+const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...cors, "Content-Type": "application/json" },
   });
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
-  const url     = Deno.env.get("SUPABASE_URL")!;
-  const anon    = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const url     = Deno.env.get("SUPABASE_URL");
+  const anon    = Deno.env.get("SUPABASE_ANON_KEY");
+  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-  // 호출자 인증 (인증된 사용자만 허용)
   const auth = req.headers.get("Authorization") ?? "";
   const userClient = createClient(url, anon, {
     global: { headers: { Authorization: auth } },
@@ -71,7 +69,7 @@ serve(async (req) => {
       const { en_id, user_id } = body;
       if (!en_id && !user_id) return json({ error: "en_id 또는 user_id 필수" }, 400);
 
-      let uid = user_id as string | null;
+      let uid = user_id;
       if (!uid && en_id) {
         const { data: row } = await admin.from("engineers").select("user_id").eq("en_id", en_id).maybeSingle();
         uid = row?.user_id ?? null;
@@ -86,6 +84,6 @@ serve(async (req) => {
 
     return json({ error: "Method not allowed" }, 405);
   } catch (e) {
-    return json({ error: String((e as Error).message ?? e) }, 500);
+    return json({ error: String(e?.message ?? e) }, 500);
   }
 });
