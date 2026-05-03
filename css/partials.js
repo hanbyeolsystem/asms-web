@@ -13,7 +13,7 @@
     <div class="top-bar">
       <div class="top-bar-row1">
         <div class="brand">
-          <a href="orders.html"><span class="brand-logo">PACAI</span></a>
+          <a href="orders.html"><span class="brand-logo">한별시스템</span></a>
           <span class="branch-tag">[관리자]</span>
         </div>
         <div class="top-menu-wrap">
