@@ -174,11 +174,8 @@ function selectCust(idx) {
     if (f[prefix + "2"]) f[prefix + "2"].value = v[1] || "";
     if (f[prefix + "3"]) f[prefix + "3"].value = v[2] || "";
   });
-  // 고객 구분 라디오
-  if (c.cu_kind) {
-    const r = document.querySelector(`input[name="cu_kind"][value="${c.cu_kind}"]`);
-    if (r) r.checked = true;
-  }
+  // 회원 모달에서 선택 시 임대제품 칸은 비움 (회원의 기존 cu_kind 값은 의미 안 맞음)
+  if (f.cu_kind) f.cu_kind.value = "";
   closeCustModal();
 }
 
@@ -298,8 +295,8 @@ async function go() {
     process_date: date_str,
     receiver:     f.work_name.value.trim() || "김상환",
     kind2:        radio("or_kind3") || "출장",
-    cu_kind:      radio("cu_kind") || "개인",
-    co_name:      f.co_name ? f.co_name.value : "",
+    cu_kind:      f.cu_kind ? f.cu_kind.value : "",  // 임대제품
+    co_name:      f.co_name ? f.co_name.value : "",  // 주판매
     cu_tel:       [f.cu_tel1.value, f.cu_tel2.value, f.cu_tel3.value].filter(Boolean).join("-"),
     co_tel:       [f.co_tel1.value, f.co_tel2.value, f.co_tel3.value].filter(Boolean).join("-"),
     cu_mobile:    [f.cu_mobile1.value, f.cu_mobile2.value, f.cu_mobile3.value].filter(Boolean).join("-"),
@@ -352,13 +349,8 @@ document.addEventListener("keydown", e => {
       <form name="frm" onsubmit="event.preventDefault();go();">
       <table class="form-table">
         <tr>
-          <th>고객 구분</th>
-          <td colspan="3">
-            <label><input type="radio" name="cu_kind" value="개인" checked>개인</label>&nbsp;
-            <label><input type="radio" name="cu_kind" value="사업">사업</label>&nbsp;
-            <label><input type="radio" name="cu_kind" value="법인">법인</label>&nbsp;
-            <label><input type="radio" name="cu_kind" value="기타">기타</label>
-          </td>
+          <th>임대제품</th>
+          <td colspan="3"><input type="text" name="cu_kind" size="40" maxlength="40" placeholder="임대제품명을 입력하세요"></td>
         </tr>
         <tr>
           <th>고객 성명</th>
@@ -366,8 +358,8 @@ document.addEventListener("keydown", e => {
             <input type="text" name="cu_name" size="14" maxlength="20">
             <button type="button" class="search-btn-inline" onclick="openCustModal()">회원 검색</button>
           </td>
-          <th>회사명</th>
-          <td><input type="text" name="co_name" size="20" maxlength="20"></td>
+          <th>주판매</th>
+          <td><input type="text" name="co_name" size="20" maxlength="40" placeholder="주판매 제품"></td>
         </tr>
         <tr>
           <th>전화번호</th>
