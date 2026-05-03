@@ -122,6 +122,37 @@ function searchZip() {
   }).open();
 }
 
+/* ==================== 기존 고객 매칭 안내 ==================== */
+let MATCHED_CUSTOMER = null;  // 등록 시 사용할 cu_number 결정
+function checkExistingCustomer() {
+  const f = document.frm;
+  const name = (f.cu_name.value || "").trim();
+  const tel    = [f.cu_tel1.value, f.cu_tel2.value, f.cu_tel3.value].filter(Boolean).join("-");
+  const mobile = [f.cu_mobile1.value, f.cu_mobile2.value, f.cu_mobile3.value].filter(Boolean).join("-");
+  const matches = new Map();
+  if (name && name.length >= 2) {
+    CUSTOMERS.forEach(c => { if (c.cu_name && c.cu_name.includes(name)) matches.set(c.cu_number, c); });
+  }
+  if (tel && tel.replace(/-/g,"").length >= 4) {
+    CUSTOMERS.forEach(c => { if (c.cu_tel && c.cu_tel.includes(tel)) matches.set(c.cu_number, c); });
+  }
+  if (mobile && mobile.replace(/-/g,"").length >= 4) {
+    CUSTOMERS.forEach(c => { if (c.cu_mobile && c.cu_mobile.includes(mobile)) matches.set(c.cu_number, c); });
+  }
+  const arr = Array.from(matches.values()).sort((a,b)=>(b.order_count||0)-(a.order_count||0)).slice(0, 5);
+  const row = document.getElementById("matchRow");
+  const list = document.getElementById("matchList");
+  if (arr.length === 0) { row.style.display = "none"; MATCHED_CUSTOMER = null; return; }
+  list.innerHTML = arr.map(c => {
+    const idx = CUSTOMERS.indexOf(c);
+    return `<a style="margin-right:10px;color:#06b;cursor:pointer;text-decoration:underline;" onclick="selectCust(${idx})">`
+      + `${esc(c.cu_name)}${(c.order_count||0)>0?' ('+c.order_count+'회)':''}${c.cu_mobile?' / '+esc(c.cu_mobile):''}${c.cu_tel?' / '+esc(c.cu_tel):''}`
+      + `</a>`;
+  }).join(" · ");
+  row.style.display = "";
+}
+window.checkExistingCustomer = checkExistingCustomer;
+
 /* ==================== 회원 검색 ==================== */
 function openCustModal() {
   document.getElementById("custModal").classList.add("show");
@@ -166,6 +197,7 @@ function renderCustList(q) {
 function selectCust(idx) {
   const c = CUSTOMERS[idx];
   if (!c) return;
+  MATCHED_CUSTOMER = c;
   const f = document.frm;
   f.cu_name.value = c.cu_name || "";
   if (f.co_name) f.co_name.value = c.co_name || "";  // 주판매
@@ -181,6 +213,8 @@ function selectCust(idx) {
     if (f[prefix + "3"]) f[prefix + "3"].value = v[2] || "";
   });
   closeCustModal();
+  // 매칭 안내 박스 숨기기 (이미 회원 선택했으니)
+  document.getElementById("matchRow").style.display = "none";
 }
 
 /* ==================== 상품 검색 ==================== */
@@ -283,10 +317,18 @@ async function go() {
     todayCount = stored.filter(o => (o.order_no || "").startsWith(today_prefix)).length + 1;
   }
 
+  // 매칭 안내가 켜져있는데 사용자가 클릭으로 회원 선택 안 했으면 한 번 더 확인
+  if (!MATCHED_CUSTOMER && document.getElementById("matchRow").style.display !== "none") {
+    if (!confirm("기존 고객으로 등록된 매칭이 있습니다. 그래도 신규 고객으로 등록하시겠습니까?\n(취소를 누르고 매칭 안내에서 클릭하면 기존 고객으로 등록됩니다.)")) return;
+  }
+
+  const cu_number = MATCHED_CUSTOMER?.cu_number || ("U_" + Date.now());
+
   const newOrder = {
     seq_no:       nextSeq,
     order_no:     today_prefix + todayCount,
     branch:       "대구",
+    cu_number:    cu_number,
     cu_name:      f.cu_name.value.trim(),
     status:       "접수",
     product:      f.mo_engname.value.trim() || "미입력",
@@ -294,8 +336,8 @@ async function go() {
     process_date: date_str,
     receiver:     f.work_name.value.trim() || "김상환",
     kind2:        radio("or_kind3") || "출장",
-    cu_kind:      f.cu_kind ? f.cu_kind.value : "",  // 임대제품
-    co_name:      f.co_name ? f.co_name.value : "",  // 주판매
+    cu_kind:      f.cu_kind ? f.cu_kind.value.trim() : "",  // 임대제품
+    co_name:      f.co_name ? f.co_name.value.trim() : "",  // 주판매
     cu_tel:       [f.cu_tel1.value, f.cu_tel2.value, f.cu_tel3.value].filter(Boolean).join("-"),
     co_tel:       [f.co_tel1.value, f.co_tel2.value, f.co_tel3.value].filter(Boolean).join("-"),
     cu_mobile:    [f.cu_mobile1.value, f.cu_mobile2.value, f.cu_mobile3.value].filter(Boolean).join("-"),
@@ -313,14 +355,41 @@ async function go() {
     delete newOrder.created_at;
     const res = await window.dbOrderUpsert(newOrder);
     if (res?.error) { alert("등록 실패: " + res.error); return; }
+
+    // customers 동기화: 매칭이면 last_seq/order_count 갱신, 신규면 INSERT
+    try {
+      if (MATCHED_CUSTOMER) {
+        await window.dbCustomerUpdate(cu_number, {
+          last_seq: nextSeq,
+          order_count: (MATCHED_CUSTOMER.order_count || 0) + 1,
+        });
+      } else {
+        await window.dbCustomerInsert({
+          cu_number,
+          cu_name:    newOrder.cu_name,
+          cu_kind:    newOrder.cu_kind,
+          co_name:    newOrder.co_name,
+          cu_mail:    newOrder.cu_mail,
+          zipcode1:   newOrder.zipcode1,
+          address1:   newOrder.address1,
+          address2:   newOrder.address2,
+          cu_tel:     newOrder.cu_tel,
+          cu_mobile:  newOrder.cu_mobile,
+          co_tel:     newOrder.co_tel,
+          co_fax:     newOrder.co_fax,
+          last_seq:   nextSeq,
+          order_count: 1,
+        });
+      }
+    } catch (e) { console.warn("customers 동기화 실패:", e); }
   } else {
     const stored = JSON.parse(localStorage.getItem("user_orders") || "[]");
     stored.push(newOrder);
     localStorage.setItem("user_orders", JSON.stringify(stored));
   }
 
-  alert(`접수가 등록되었습니다.\n접수번호: ${newOrder.order_no}`);
-  location.href = "orders.html";
+  alert(`접수가 등록되었습니다.\n접수번호: ${newOrder.order_no}` + (MATCHED_CUSTOMER ? "\n(기존 고객 연결됨)" : "\n(신규 고객 자동 등록)"));
+  location.href = "orders.html?status=접수";
 }
 
 function esc(s) {
@@ -354,18 +423,24 @@ document.addEventListener("keydown", e => {
         <tr>
           <th>고객 성명</th>
           <td>
-            <input type="text" name="cu_name" size="14" maxlength="20">
+            <input type="text" name="cu_name" size="14" maxlength="20" oninput="checkExistingCustomer()">
             <button type="button" class="search-btn-inline" onclick="openCustModal()">회원 검색</button>
           </td>
           <th>주판매</th>
           <td><input type="text" name="co_name" size="20" maxlength="40" placeholder="주판매 제품"></td>
         </tr>
+        <tr id="matchRow" style="display:none;">
+          <td colspan="4" style="background:#fff8db;border:1px solid #e0c54e;padding:6px 10px;font-size:12px;">
+            <span style="color:#a40000;font-weight:bold;">기존 고객 매칭:</span>
+            <span id="matchList"></span>
+          </td>
+        </tr>
         <tr>
           <th>전화번호</th>
           <td>
-            <input type="text" name="cu_tel1" size="3" maxlength="4">-
-            <input type="text" name="cu_tel2" size="4" maxlength="4">-
-            <input type="text" name="cu_tel3" size="4" maxlength="4">
+            <input type="text" name="cu_tel1" size="3" maxlength="4" oninput="checkExistingCustomer()">-
+            <input type="text" name="cu_tel2" size="4" maxlength="4" oninput="checkExistingCustomer()">-
+            <input type="text" name="cu_tel3" size="4" maxlength="4" oninput="checkExistingCustomer()">
           </td>
           <th>회사 전화</th>
           <td>
@@ -377,9 +452,9 @@ document.addEventListener("keydown", e => {
         <tr>
           <th>휴대폰</th>
           <td>
-            <input type="text" name="cu_mobile1" size="3" maxlength="4">-
-            <input type="text" name="cu_mobile2" size="4" maxlength="4">-
-            <input type="text" name="cu_mobile3" size="4" maxlength="4">
+            <input type="text" name="cu_mobile1" size="3" maxlength="4" oninput="checkExistingCustomer()">-
+            <input type="text" name="cu_mobile2" size="4" maxlength="4" oninput="checkExistingCustomer()">-
+            <input type="text" name="cu_mobile3" size="4" maxlength="4" oninput="checkExistingCustomer()">
           </td>
           <th>팩스</th>
           <td>
