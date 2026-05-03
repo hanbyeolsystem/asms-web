@@ -16,7 +16,6 @@ asms-web/
 ├── product-detail.html
 ├── customers.html
 ├── engineers.html
-├── manual.html
 ├── sms.html
 ├── login.html
 ├── css/
