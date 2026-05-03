@@ -417,10 +417,6 @@ document.addEventListener("keydown", e => {
       <form name="frm" onsubmit="event.preventDefault();go();">
       <table class="form-table">
         <tr>
-          <th>임대제품</th>
-          <td colspan="3"><input type="text" name="cu_kind" size="40" maxlength="40" placeholder="임대제품명을 입력하세요"></td>
-        </tr>
-        <tr>
           <th>고객 성명</th>
           <td>
             <input type="text" name="cu_name" size="14" maxlength="20" oninput="checkExistingCustomer()">
@@ -428,6 +424,10 @@ document.addEventListener("keydown", e => {
           </td>
           <th>주판매</th>
           <td><input type="text" name="co_name" size="20" maxlength="40" placeholder="주판매 제품"></td>
+        </tr>
+        <tr>
+          <th>임대제품</th>
+          <td colspan="3"><input type="text" name="cu_kind" size="40" maxlength="40" placeholder="임대제품명을 입력하세요"></td>
         </tr>
         <tr id="matchRow" style="display:none;">
           <td colspan="4" style="background:#fff8db;border:1px solid #e0c54e;padding:6px 10px;font-size:12px;">
