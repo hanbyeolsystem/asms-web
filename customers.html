@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>A/S Admin - 고객관리</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="css/partials.js"></script>
 <style>
   .cust-table { width: 980px; }
@@ -100,19 +103,23 @@ let CURRENT_PAGE = 1;
 
 async function load() {
   try {
-    const res = await fetch("data/customers.json?ts=" + Date.now());
-    CUSTOMERS = await res.json();
+    if (window.SB_CONFIGURED) {
+      CUSTOMERS = (await window.dbCustomersAll()) || [];
+    } else {
+      const res = await fetch("data/customers.json?ts=" + Date.now());
+      CUSTOMERS = await res.json();
+    }
   } catch (e) {
     document.getElementById("custBody").innerHTML =
-      "<tr><td colspan='9' style='color:#c33;'>customers.json 을 불러오지 못했습니다. " +
-      "정적 파일은 file:// 로 직접 열면 차단됩니다. " +
-      "<br><br><b>해결방법:</b> web 폴더에서 <code>python -m http.server 8080</code> 실행 후 " +
-      "<a href='http://localhost:8080/customers.html'>http://localhost:8080/customers.html</a> 접속.</td></tr>";
+      "<tr><td colspan='9' style='color:#c33;padding:20px;'>고객 데이터를 불러오지 못했습니다: " +
+      esc(e.message || String(e)) + "</td></tr>";
     return;
   }
   render();
-  loadStatus();
-  setInterval(loadStatus, 5000);   // 5초마다 수확 상태 갱신
+  if (!window.SB_CONFIGURED) {
+    loadStatus();
+    setInterval(loadStatus, 5000);
+  }
 }
 
 async function loadStatus() {
