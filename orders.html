@@ -227,6 +227,25 @@ function bindStatusTabs() {
       setStatus(a.dataset.status || "");
     });
   });
+
+  // 헤더의 빠른 status 탭 (.quick a) - 같은 orders.html 안에서는 reload 막기
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest(".quick a");
+    if (!a) return;
+    const here = location.pathname.split("/").pop();
+    if (here !== "orders.html") return;  // 다른 페이지에서는 정상 navigation
+    e.preventDefault();
+    const u = new URL(a.href, location.href);
+    const s = u.searchParams.get("status") || "";
+    history.pushState({}, "", "orders.html" + (s ? "?status=" + encodeURIComponent(s) : ""));
+    setStatus(s);
+  });
+
+  // 브라우저 뒤로/앞으로 시에도 동작
+  window.addEventListener("popstate", () => {
+    const s = new URLSearchParams(location.search).get("status") || "";
+    setStatus(s);
+  });
 }
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", bindStatusTabs);
