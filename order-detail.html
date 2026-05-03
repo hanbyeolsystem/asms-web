@@ -28,6 +28,21 @@
     padding: 12px; text-align: center; color: #855;
     border-radius: 4px;
   }
+  /* 읽기 전용 영역 - 깔끔한 텍스트 표시 */
+  .view-table input[readonly] {
+    background: transparent;
+    border: 0;
+    border-bottom: 1px dotted #ddd;
+    color: #222;
+    padding: 2px 4px;
+    font-weight: 500;
+    cursor: default;
+  }
+  .view-table input[readonly]:focus { outline: none; }
+  .view-table input[readonly][value=""] { border-bottom-color: transparent; }
+  .view-table textarea[readonly] {
+    cursor: default;
+  }
 </style>
 <script>
 let CURRENT = null;
@@ -189,6 +204,8 @@ function populate(o, listOrder) {
   let kind3 = o.or_kind3 || o.kind2 || "";
   if (kind3 === "일반") kind3 = "출장";
   setRadio("or_kind3", kind3);
+  const k3el = document.getElementById("readonlyKind3");
+  if (k3el) k3el.textContent = kind3 || "-";
   setRadio("or_kind2", o.or_kind2);
   setRadio("re_now",   o.re_now || o.status);
 
@@ -319,55 +336,54 @@ document.addEventListener("DOMContentLoaded", load);
       </div>
 
       <form name="frm" onsubmit="event.preventDefault();save();">
-      <table class="form-table">
+      <table class="form-table view-table">
         <tr><th colspan="4" style="background:#bbbbff;">고객정보</th></tr>
         <tr>
           <th>고객명</th>
-          <td><input type="text" name="cu_name" size="14"></td>
+          <td><input type="text" name="cu_name" size="14" readonly></td>
           <th>임대제품</th>
-          <td><input type="text" name="cu_kind" size="22" maxlength="40" placeholder="임대제품명"></td>
+          <td><input type="text" name="cu_kind" size="22" readonly></td>
         </tr>
         <tr>
           <th>주판매</th>
-          <td><input type="text" name="co_name" size="20" maxlength="40" placeholder="주판매 제품"></td>
+          <td><input type="text" name="co_name" size="20" readonly></td>
           <th>이메일</th>
-          <td><input type="text" name="cu_mail" size="22"></td>
+          <td><input type="text" name="cu_mail" size="22" readonly></td>
         </tr>
         <tr>
           <th>전화번호</th>
           <td>
-            <input type="text" name="cu_tel1" size="3">-
-            <input type="text" name="cu_tel2" size="4">-
-            <input type="text" name="cu_tel3" size="4">
+            <input type="text" name="cu_tel1" size="3" readonly>-
+            <input type="text" name="cu_tel2" size="4" readonly>-
+            <input type="text" name="cu_tel3" size="4" readonly>
           </td>
           <th>회사 전화</th>
           <td>
-            <input type="text" name="co_tel1" size="3">-
-            <input type="text" name="co_tel2" size="4">-
-            <input type="text" name="co_tel3" size="4">
+            <input type="text" name="co_tel1" size="3" readonly>-
+            <input type="text" name="co_tel2" size="4" readonly>-
+            <input type="text" name="co_tel3" size="4" readonly>
           </td>
         </tr>
         <tr>
           <th>휴대폰</th>
           <td>
-            <input type="text" name="cu_mobile1" size="3">-
-            <input type="text" name="cu_mobile2" size="4">-
-            <input type="text" name="cu_mobile3" size="4">
+            <input type="text" name="cu_mobile1" size="3" readonly>-
+            <input type="text" name="cu_mobile2" size="4" readonly>-
+            <input type="text" name="cu_mobile3" size="4" readonly>
           </td>
           <th>팩스</th>
           <td>
-            <input type="text" name="co_fax1" size="3">-
-            <input type="text" name="co_fax2" size="4">-
-            <input type="text" name="co_fax3" size="4">
+            <input type="text" name="co_fax1" size="3" readonly>-
+            <input type="text" name="co_fax2" size="4" readonly>-
+            <input type="text" name="co_fax3" size="4" readonly>
           </td>
         </tr>
         <tr>
           <th>주소</th>
           <td colspan="3">
             <input type="text" name="zipcode1" size="8" readonly>
-            <button type="button" class="btn" onclick="searchZip()">우편번호 검색</button><br>
-            <input type="text" name="address1" size="50" readonly onclick="searchZip()" style="cursor:pointer;margin-top:4px;background:#fafafa;"><br>
-            <input type="text" name="address2" size="50" placeholder="상세주소" style="margin-top:4px;">
+            <input type="text" name="address1" size="50" readonly style="margin-left:4px;"><br>
+            <input type="text" name="address2" size="60" readonly placeholder="상세주소" style="margin-top:4px;">
           </td>
         </tr>
 
@@ -380,21 +396,24 @@ document.addEventListener("DOMContentLoaded", load);
         </tr>
         <tr>
           <th>시리얼번호</th>
-          <td><input type="text" name="mo_serial" size="14"></td>
+          <td><input type="text" name="mo_serial" size="14" readonly></td>
           <th>제조사</th>
           <td><input type="text" name="mo_srfr" size="22" readonly></td>
         </tr>
         <tr>
           <th>요청방법</th>
-          <td colspan="3">
-            <label><input type="radio" name="or_kind3" value="출장">출장</label>
-            <label><input type="radio" name="or_kind3" value="택배">택배</label>
-            <label><input type="radio" name="or_kind3" value="방문">방문</label>
+          <td colspan="3" id="readonlyKind3" style="font-weight:bold;color:#06b;"></td>
+        </tr>
+        <tr style="display:none;">
+          <td colspan="4">
+            <input type="radio" name="or_kind3" value="출장">
+            <input type="radio" name="or_kind3" value="택배">
+            <input type="radio" name="or_kind3" value="방문">
           </td>
         </tr>
         <tr>
           <th>고객 요청사항</th>
-          <td colspan="3"><textarea name="cu_want" rows="8" style="width:100%;"></textarea></td>
+          <td colspan="3"><textarea name="cu_want" rows="6" style="width:100%;background:#f8f8f8;border:1px solid #e0e0e0;color:#333;" readonly></textarea></td>
         </tr>
 
         <tr><th colspan="4" style="background:#bbbbff;">처리정보</th></tr>
