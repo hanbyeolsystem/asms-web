@@ -254,7 +254,9 @@ async function save() {
     localStorage.setItem("user_orders", JSON.stringify(u));
   }
   alert("저장되었습니다.");
-  location.href = "orders.html";
+  // 변경된 status 탭으로 자동 이동 (변경 반영을 즉시 확인 가능)
+  const targetStatus = o.status || "";
+  location.href = "orders.html" + (targetStatus ? "?status=" + encodeURIComponent(targetStatus) : "");
 }
 
 async function del() {
