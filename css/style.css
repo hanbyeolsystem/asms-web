@@ -558,6 +558,15 @@ img { border: 0; vertical-align: middle; }
     background: transparent !important;
   }
   .view-table input[readonly][value=""] { border-bottom-color: transparent; }
+  /* 전화 분할 input 은 한 줄에 (위 100% 규칙 위에 덮어씀) */
+  .view-table input[name^="cu_tel"][readonly],
+  .view-table input[name^="co_tel"][readonly],
+  .view-table input[name^="cu_mobile"][readonly],
+  .view-table input[name^="co_fax"][readonly],
+  .view-table input[name="zipcode1"][readonly] {
+    width: 28% !important;
+    display: inline-block !important;
+  }
 
   /* 신규접수 매칭 박스 */
   #matchRow td { font-size: 13px; line-height: 1.7; padding: 8px 10px; }
