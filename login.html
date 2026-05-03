@@ -16,21 +16,25 @@
   .login-mode a { color: #06b; cursor: pointer; }
 </style>
 <script>
-let MODE = "signin"; // 'signin' | 'signup' | 'recover'
+let MODE = "signin"; // 'signin' | 'signup' | 'recover' | 'reset_pw'
 
 function setMode(m) {
   MODE = m;
   document.getElementById("modeTitle").textContent =
-    m === "signup"  ? "신규 가입" :
-    m === "recover" ? "비밀번호 재설정" : "로그인";
+    m === "signup"   ? "신규 가입" :
+    m === "recover"  ? "비밀번호 재설정 메일 발송" :
+    m === "reset_pw" ? "새 비밀번호 설정" : "로그인";
   document.getElementById("loginBtn").textContent =
-    m === "signup"  ? "가입하기" :
-    m === "recover" ? "재설정 메일 발송" : "LOGIN";
+    m === "signup"   ? "가입하기" :
+    m === "recover"  ? "재설정 메일 발송" :
+    m === "reset_pw" ? "비밀번호 변경" : "LOGIN";
   document.getElementById("pwRow").style.display = (m === "recover") ? "none" : "";
+  document.getElementById("idRow").style.display = (m === "reset_pw") ? "none" : "";
+  document.getElementById("PW").placeholder = (m === "reset_pw") ? "새 비밀번호 (6자 이상)" : "";
   document.getElementById("modeLinks").innerHTML =
     m === "signin"
       ? '<a onclick="setMode(\'signup\')">신규 가입</a> · <a onclick="setMode(\'recover\')">비밀번호 잊음</a>'
-      : '<a onclick="setMode(\'signin\')">로그인으로 돌아가기</a>';
+      : (m === "reset_pw" ? "" : '<a onclick="setMode(\'signin\')">로그인으로 돌아가기</a>');
   showMsg("", "");
 }
 
@@ -49,7 +53,7 @@ async function submitForm() {
   }
   const email = document.getElementById("ID").value.trim();
   const pw    = document.getElementById("PW").value;
-  if (!email) { showMsg("이메일을 입력하세요.", "err"); return; }
+  if (MODE !== "reset_pw" && !email) { showMsg("이메일을 입력하세요.", "err"); return; }
 
   document.getElementById("loginBtn").disabled = true;
   try {
@@ -63,9 +67,16 @@ async function submitForm() {
       if (error) throw error;
       showMsg("가입 메일을 발송했습니다. 메일함을 확인해 인증을 마쳐주세요.", "ok");
     } else if (MODE === "recover") {
-      const { error } = await window.sb.auth.resetPasswordForEmail(email);
+      const redirectTo = location.origin + location.pathname;
+      const { error } = await window.sb.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
-      showMsg("재설정 링크를 메일로 발송했습니다.", "ok");
+      showMsg("재설정 링크를 메일로 발송했습니다. 메일의 링크를 클릭하면 새 비밀번호를 설정하는 화면으로 돌아옵니다.", "ok");
+    } else if (MODE === "reset_pw") {
+      if (!pw || pw.length < 6) { showMsg("비밀번호는 6자 이상", "err"); return; }
+      const { error } = await window.sb.auth.updateUser({ password: pw });
+      if (error) throw error;
+      showMsg("비밀번호가 변경되었습니다. 잠시 후 이동합니다.", "ok");
+      setTimeout(() => location.href = nextUrl(), 800);
     }
   } catch (e) {
     showMsg(e.message || String(e), "err");
@@ -81,12 +92,23 @@ function nextUrl() {
 
 function onEnter(e) { if ((e.keyCode || e.which) === 13) submitForm(); }
 
-// 이미 로그인되어 있으면 즉시 이동
 window.addEventListener("DOMContentLoaded", async () => {
-  if (window.SB_CONFIGURED && window.sb) {
-    const { data: { session } } = await window.sb.auth.getSession();
-    if (session) location.href = nextUrl();
+  if (!window.SB_CONFIGURED || !window.sb) return;
+
+  // 비밀번호 재설정 링크 진입 — Supabase 가 PASSWORD_RECOVERY 이벤트 발생
+  window.sb.auth.onAuthStateChange((event) => {
+    if (event === "PASSWORD_RECOVERY") setMode("reset_pw");
+  });
+
+  // URL fragment 에 type=recovery 가 있으면 즉시 reset_pw 모드
+  if (location.hash && location.hash.includes("type=recovery")) {
+    setMode("reset_pw");
+    return;
   }
+
+  // 이미 로그인된 경우 자동 이동 (단 reset_pw 진행 중이면 이동 안 함)
+  const { data: { session } } = await window.sb.auth.getSession();
+  if (session && MODE === "signin") location.href = nextUrl();
 });
 </script>
 </head>
@@ -103,7 +125,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     <form name="frm2" onsubmit="event.preventDefault();submitForm();" class="login-form">
       <table border="0" cellspacing="0" cellpadding="0">
-        <tr>
+        <tr id="idRow">
           <td>이메일 :&nbsp;</td>
           <td><input type="email" id="ID" autocomplete="email" autofocus></td>
         </tr>
