@@ -137,22 +137,27 @@ function renderCustList(q) {
   q = (q || "").trim().toLowerCase();
   const list = q
     ? CUSTOMERS.filter(c =>
-        ((c.cu_name || "") + " " + (c.co_name || "")).toLowerCase().includes(q) ||
+        ((c.cu_name || "") + " " + (c.co_name || "") + " " + (c.cu_kind || "")).toLowerCase().includes(q) ||
         (c.cu_mobile || "").includes(q) ||
         (c.cu_tel || "").includes(q) ||
         (c.address1 || "").toLowerCase().includes(q)
       )
     : CUSTOMERS;
   const limited = list.slice(0, 100);
-  const html = limited.map((c, i) => `
+  const html = limited.map((c, i) => {
+    const lease = c.cu_kind  ? `<span style="background:#fce8e8;color:#a40000;padding:1px 6px;border-radius:3px;font-size:11px;margin-right:4px;">임대 ${esc(c.cu_kind)}</span>` : "";
+    const top   = c.co_name  ? `<span style="background:#e8f0fc;color:#003a7a;padding:1px 6px;border-radius:3px;font-size:11px;">주판매 ${esc(c.co_name)}</span>` : "";
+    const oc    = (c.order_count || 0) > 0 ? `<span style="color:#888;font-size:11px;margin-left:6px;">접수 ${c.order_count}회</span>` : "";
+    return `
     <div class="modal-list-item" onclick="selectCust(${CUSTOMERS.indexOf(c)})">
-      <b>${esc(c.cu_name)}</b>${c.co_name ? ' <span style="color:#666;">/ ' + esc(c.co_name) + '</span>' : ""}
-      <small style="display:block;margin-top:2px;">
+      <b>${esc(c.cu_name)}</b>${oc}
+      ${(lease || top) ? `<div style="margin-top:3px;">${lease}${top}</div>` : ""}
+      <small style="display:block;margin-top:3px;">
         ${esc(c.cu_mobile || "")}${c.cu_mobile && c.cu_tel ? " · " : ""}${esc(c.cu_tel || "")}<br>
         ${esc(c.address1 || "")} ${esc(c.address2 || "")}
       </small>
-    </div>
-  `).join("");
+    </div>`;
+  }).join("");
   document.getElementById("custList").innerHTML = html ||
     `<div class="modal-empty">검색 결과 없음<br><small>${CUSTOMERS.length}명의 고객 데이터에서 검색</small></div>`;
   document.getElementById("custCount").textContent =
@@ -163,7 +168,8 @@ function selectCust(idx) {
   if (!c) return;
   const f = document.frm;
   f.cu_name.value = c.cu_name || "";
-  if (f.co_name) f.co_name.value = c.co_name || "";
+  if (f.co_name) f.co_name.value = c.co_name || "";  // 주판매
+  if (f.cu_kind) f.cu_kind.value = c.cu_kind || "";  // 임대제품
   f.cu_mail.value = c.cu_mail || "";
   document.getElementById("zipcode1").value = c.zipcode1 || "";
   document.getElementById("address1").value = c.address1 || "";
@@ -174,8 +180,6 @@ function selectCust(idx) {
     if (f[prefix + "2"]) f[prefix + "2"].value = v[1] || "";
     if (f[prefix + "3"]) f[prefix + "3"].value = v[2] || "";
   });
-  // 회원 모달 선택 시 임대제품 칸은 비움 (의미 안 맞음)
-  if (f.cu_kind) f.cu_kind.value = "";
   closeCustModal();
 }
 

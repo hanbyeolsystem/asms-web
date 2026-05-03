@@ -241,6 +241,8 @@ function openCustEdit(target) {
   document.getElementById("ceMsg").textContent = "";
   const f = document.forms.ceForm;
   f.cu_name.value   = target?.cu_name   || "";
+  f.cu_kind.value   = target?.cu_kind   || "";  // 임대제품
+  f.co_name.value   = target?.co_name   || "";  // 주판매
   f.cu_mobile.value = target?.cu_mobile || "";
   f.cu_tel.value    = target?.cu_tel    || "";
   f.co_tel.value    = target?.co_tel    || "";
@@ -262,6 +264,8 @@ async function submitCustEdit() {
   if (!cu_name) { msg.textContent = "고객명은 필수"; msg.style.color="#c00"; return; }
   const payload = {
     cu_name,
+    cu_kind:   f.cu_kind.value.trim(),  // 임대제품
+    co_name:   f.co_name.value.trim(),  // 주판매
     cu_mobile: f.cu_mobile.value.trim(),
     cu_tel:    f.cu_tel.value.trim(),
     co_tel:    f.co_tel.value.trim(),
@@ -278,8 +282,6 @@ async function submitCustEdit() {
     res = await window.dbCustomerUpdate(EDIT_TARGET.cu_number, payload);
   } else {
     payload.cu_number = "U_" + Date.now(); // 신규 고객 식별자 (U_ prefix)
-    payload.cu_kind   = "";
-    payload.co_name   = "";
     payload.last_seq  = null;
     payload.order_count = 0;
     res = await window.dbCustomerInsert(payload);
@@ -345,6 +347,8 @@ document.addEventListener("keydown", e => {
       <form name="ceForm" onsubmit="event.preventDefault();submitCustEdit();">
         <table>
           <tr><td class="lbl">고객명 *</td><td><input type="text" name="cu_name" autofocus></td></tr>
+          <tr><td class="lbl">임대제품</td><td><input type="text" name="cu_kind" placeholder="임대 중인 제품"></td></tr>
+          <tr><td class="lbl">주판매</td><td><input type="text" name="co_name" placeholder="자주 구매하는 제품"></td></tr>
           <tr><td class="lbl">휴대폰</td><td><input type="text" name="cu_mobile" placeholder="010-0000-0000"></td></tr>
           <tr><td class="lbl">일반전화</td><td><input type="text" name="cu_tel" placeholder="053-000-0000"></td></tr>
           <tr><td class="lbl">회사전화</td><td><input type="text" name="co_tel"></td></tr>
