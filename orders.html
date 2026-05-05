@@ -22,6 +22,17 @@
   .bulk-bar button:hover { background: #1d4ed8; }
   .order-table td.bulk, .order-table th.bulk { width: 32px; text-align: center; padding: 0; }
   .order-table input.bulk-cb { width: 18px; height: 18px; margin: 0; cursor: pointer; }
+  .bulk-modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 1000; }
+  .bulk-modal.show { display: flex; }
+  .bulk-modal-box { background: #fff; padding: 20px; border-radius: 8px; min-width: 320px; max-width: 480px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,.2); }
+  .bulk-modal-title { font-size: 16px; font-weight: bold; margin-bottom: 4px; color: #111; }
+  .bulk-modal-sub { font-size: 12px; color: #888; margin-bottom: 10px; }
+  .bulk-modal textarea { width: 100%; box-sizing: border-box; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; min-height: 80px; }
+  .bulk-modal-btns { margin-top: 12px; display: flex; gap: 8px; justify-content: flex-end; }
+  .bulk-modal-btns button { padding: 8px 16px; font-size: 13px; border: none; border-radius: 4px; cursor: pointer; }
+  .bulk-modal-btns .bm-ok { background: #2563eb; color: #fff; }
+  .bulk-modal-btns .bm-ok:hover { background: #1d4ed8; }
+  .bulk-modal-btns .bm-cancel { background: #eee; color: #333; }
 </style>
 </head>
 <body>
@@ -86,6 +97,19 @@
         <div class="bulk-bar" id="bulkBar" style="display:none;">
           <span class="bulk-info"><b id="bulkCount">0</b>건 선택됨</span>
           <button type="button" id="bulkShipBtn" onclick="bulkShip()">선택한 건 출고로 변경</button>
+        </div>
+
+        <!-- 일괄 출고 모달 -->
+        <div class="bulk-modal" id="bulkShipModal">
+          <div class="bulk-modal-box">
+            <div class="bulk-modal-title">선택한 <span id="bulkModalCount">0</span>건을 출고로 변경</div>
+            <div class="bulk-modal-sub" id="bulkModalSub">기존의견에 누적할 내용을 입력하세요 (선택, 비워둬도 됨)</div>
+            <textarea id="bulkModalText" placeholder="예: 입금확인 / 발송완료 등"></textarea>
+            <div class="bulk-modal-btns">
+              <button type="button" class="bm-cancel" onclick="closeBulkModal()">취소</button>
+              <button type="button" class="bm-ok" id="bulkModalOk" onclick="confirmBulkShip()">변경</button>
+            </div>
+          </div>
         </div>
 
         <!-- 목록 테이블 -->
@@ -452,12 +476,13 @@ function refreshBulkBar() {
 }
 window.refreshBulkBar = refreshBulkBar;
 
-async function bulkShip() {
+let BULK_WORK = [];  // 모달 확인 대기 중인 처리 대상
+
+function bulkShip() {
   const checkedSeqs = [...document.querySelectorAll("#orderBody .bulk-cb:checked")]
     .map(cb => String(cb.dataset.seq));
   if (!checkedSeqs.length) { alert("선택된 건이 없습니다."); return; }
 
-  // 현재 페이지 행에서 데이터 매칭 (SB / 폴백 양쪽 지원)
   const pool = window.SB_CONFIGURED ? CURRENT_PAGE_ROWS : (FILTERED.length ? FILTERED : ORDERS);
   const targets = checkedSeqs
     .map(seq => pool.find(r => String(r.seq_no) === seq))
@@ -469,16 +494,34 @@ async function bulkShip() {
     alert(`선택된 ${checkedSeqs.length}건 모두 이미 출고 상태입니다.`);
     return;
   }
-  const msg = `선택한 ${checkedSeqs.length}건 중 ${work.length}건을 출고로 변경합니다.\n` +
-              (skipped ? `(이미 출고 상태인 ${skipped}건은 제외)\n` : "") +
-              `\n기존의견에 자동 누적됩니다. 진행하시겠습니까?`;
-  if (!confirm(msg)) return;
+  BULK_WORK = work;
+  document.getElementById("bulkModalCount").textContent = work.length;
+  document.getElementById("bulkModalSub").textContent =
+    skipped ? `(이미 출고 상태인 ${skipped}건은 제외) 기존의견에 누적할 내용을 입력하세요 (선택)`
+            : `기존의견에 누적할 내용을 입력하세요 (선택, 비워둬도 됨)`;
+  document.getElementById("bulkModalText").value = "";
+  document.getElementById("bulkShipModal").classList.add("show");
+  setTimeout(() => document.getElementById("bulkModalText").focus(), 50);
+}
+window.bulkShip = bulkShip;
+
+function closeBulkModal() {
+  document.getElementById("bulkShipModal").classList.remove("show");
+  BULK_WORK = [];
+}
+window.closeBulkModal = closeBulkModal;
+
+async function confirmBulkShip() {
+  const work = BULK_WORK;
+  const add = document.getElementById("bulkModalText").value.trim();
+  document.getElementById("bulkShipModal").classList.remove("show");
+  if (!work.length) return;
 
   const author = localStorage.getItem("current_user") || "관리자";
   const n = new Date();
   const pad = x => String(x).padStart(2, "0");
   const head = `${pad(n.getMonth()+1)}월 ${pad(n.getDate())}일 ${pad(n.getHours())}시 ${pad(n.getMinutes())}분  ${author} 기사의 의견 : 출고`;
-  const stamp = `${head}<br>`;
+  const stamp = add ? `${head}<br>${add}<br>` : `${head}<br>`;
 
   const btn = document.getElementById("bulkShipBtn");
   btn.disabled = true;
@@ -505,10 +548,11 @@ async function bulkShip() {
   }
   btn.disabled = false;
   btn.textContent = "선택한 건 출고로 변경";
+  BULK_WORK = [];
   alert(`완료: ${ok}건${fail ? ` / 실패: ${fail}건` : ""}`);
   await applyFilter(false);
 }
-window.bulkShip = bulkShip;
+window.confirmBulkShip = confirmBulkShip;
 
 document.addEventListener("DOMContentLoaded", load);
 document.addEventListener("keydown", e => {
