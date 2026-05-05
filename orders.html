@@ -530,7 +530,8 @@ async function confirmBulkShip() {
     const r = work[i];
     btn.textContent = `처리 중... (${i+1}/${work.length})`;
     const prev = (r.re_content || "").trim();
-    const newRC = prev ? prev + stamp : stamp;
+    const sep = (prev && !/<br\s*\/?\s*>\s*$/i.test(prev)) ? "<br>" : "";
+    const newRC = prev ? prev + sep + stamp : stamp;
     const updated = { ...r, seq_no: Number(r.seq_no), re_content: newRC, status: "출고", re_now: "출고" };
     delete updated.created_at; delete updated.updated_at;
     if (window.SB_CONFIGURED) {

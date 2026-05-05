@@ -340,7 +340,8 @@ async function save() {
     const author = f.work_name.value || "관리자";
     const head = `${pad(n.getMonth()+1)}월 ${pad(n.getDate())}일 ${pad(n.getHours())}시 ${pad(n.getMinutes())}분  ${author} 기사의 의견 : ${reNow}`;
     const stamp = add ? `${head}<br>${add}<br>` : `${head}<br>`;
-    o.re_content = prev ? prev + stamp : stamp;
+    const sep = (prev && !/<br\s*\/?\s*>\s*$/i.test(prev)) ? "<br>" : "";
+    o.re_content = prev ? prev + sep + stamp : stamp;
   } else {
     o.re_content = prev;
   }
