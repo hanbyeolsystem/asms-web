@@ -269,10 +269,41 @@ function populate(o, listOrder) {
   sb.className = "badge st-" + status;
   document.getElementById("orderDate").textContent     = o.process_date || (listOrder && listOrder.process_date) || "";
   document.getElementById("orderReceiver").textContent = o.work_name || o.receiver || (listOrder && listOrder.receiver) || "";
+
+  if (status === "출고") lockForm();
+}
+
+function lockForm() {
+  const f = document.frm;
+  if (f) {
+    f.querySelectorAll("input[name='re_now']").forEach(el => el.disabled = true);
+    f.querySelectorAll("input[name='or_kind3']").forEach(el => el.disabled = true);
+    if (f.work_name)   f.work_name.disabled   = true;
+    if (f.re_content2) f.re_content2.disabled = true;
+  }
+  const saveBtn = document.querySelector('button[onclick="save()"]');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.style.opacity = "0.4";
+    saveBtn.style.cursor = "not-allowed";
+    saveBtn.title = "출고 완료된 건은 수정할 수 없습니다";
+  }
+  if (!document.getElementById("lockNotice")) {
+    const notice = document.createElement("div");
+    notice.id = "lockNotice";
+    notice.style.cssText = "max-width:730px;margin:8px auto;padding:10px 14px;background:#fee;border:1px solid #f66;border-radius:4px;color:#900;font-size:13px;font-weight:bold;text-align:center;";
+    notice.textContent = "[출고 완료] 이미 출고 처리된 건은 수정할 수 없습니다.";
+    const form = document.querySelector('form[name="frm"]');
+    if (form && form.parentElement) form.parentElement.insertBefore(notice, form);
+  }
 }
 
 async function save() {
   if (!CURRENT) { alert("로딩이 완료되지 않았습니다."); return; }
+  if ((CURRENT.re_now || CURRENT.status || "").trim() === "출고") {
+    alert("이미 출고 처리된 건은 수정할 수 없습니다.");
+    return;
+  }
   const f = document.frm;
   const radio = name => {
     const el = document.querySelector(`input[name="${name}"]:checked`);
