@@ -14,6 +14,14 @@
   .order-table td.cu { text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
   .order-table td.product { white-space: nowrap; text-align: center; }
   .toolbar2 { width: 730px; margin: 6px auto 0; text-align: right; color: #888; font-size: 11px; }
+  .bulk-bar { width: 730px; margin: 6px auto 4px; padding: 8px 10px; background: #fff7d6; border: 1px solid #f0c000; border-radius: 4px;
+              display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+  .bulk-bar .bulk-info { color: #555; }
+  .bulk-bar .bulk-info b { color: #c00; font-size: 14px; }
+  .bulk-bar button { padding: 6px 14px; font-size: 13px; cursor: pointer; background: #2563eb; color: #fff; border: none; border-radius: 4px; }
+  .bulk-bar button:hover { background: #1d4ed8; }
+  .order-table td.bulk, .order-table th.bulk { width: 32px; text-align: center; padding: 0; }
+  .order-table input.bulk-cb { width: 18px; height: 18px; margin: 0; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -74,10 +82,17 @@
           <a href="#" data-status="출고">출고</a>
         </div>
 
+        <!-- 일괄 처리 바 -->
+        <div class="bulk-bar" id="bulkBar" style="display:none;">
+          <span class="bulk-info"><b id="bulkCount">0</b>건 선택됨</span>
+          <button type="button" id="bulkShipBtn" onclick="bulkShip()">선택한 건 출고로 변경</button>
+        </div>
+
         <!-- 목록 테이블 -->
         <table class="data-table order-table">
           <thead>
             <tr>
+              <th class="bulk"><input type="checkbox" id="bulkSelectAll" class="bulk-cb" onchange="toggleAllBulk(this.checked)" title="이 페이지 전체 선택"></th>
               <th width="80">접수번호</th>
               <th width="55">요청</th>
               <th width="55">상태</th>
@@ -90,7 +105,7 @@
             </tr>
           </thead>
           <tbody id="orderBody">
-            <tr><td colspan="9">로딩 중…</td></tr>
+            <tr><td colspan="10">로딩 중…</td></tr>
           </tbody>
         </table>
 
@@ -266,7 +281,7 @@ async function applyFilter(resetPage = true) {
 
   if (window.SB_CONFIGURED) {
     document.getElementById("orderBody").innerHTML =
-      "<tr><td colspan='9' style='text-align:center;padding:20px;color:#888;'>불러오는 중...</td></tr>";
+      "<tr><td colspan='10' style='text-align:center;padding:20px;color:#888;'>불러오는 중...</td></tr>";
     const res = await window.dbOrdersPage({
       page: CURRENT_PAGE, pageSize: PAGE_SIZE,
       status: s, searchField: f, searchValue: q,
@@ -304,7 +319,7 @@ function draw() {
   const tb = document.getElementById("orderBody");
   document.getElementById("hitCount").textContent = FILTERED.length.toLocaleString();
   if (!FILTERED.length) {
-    tb.innerHTML = "<tr><td colspan='9'>검색 결과가 없습니다.</td></tr>";
+    tb.innerHTML = "<tr><td colspan='10'>검색 결과가 없습니다.</td></tr>";
     document.getElementById("pageInfo").textContent = "";
     document.getElementById("pager").innerHTML = "";
     return;
@@ -317,6 +332,7 @@ function draw() {
 
   tb.innerHTML = slice.map(r => `
     <tr>
+      <td class="bulk"><input type="checkbox" class="bulk-cb" data-seq="${r.seq_no}" onchange="refreshBulkBar()"></td>
       <td><a href="order-detail.html?seq_no=${r.seq_no}">${esc(r.order_no)}</a></td>
       <td>${esc(r.kind2)}</td>
       <td class="st-${esc(r.status)}">${esc(r.status)}</td>
@@ -333,13 +349,14 @@ function draw() {
     `${(start + 1).toLocaleString()}-${Math.min(start + PAGE_SIZE, total).toLocaleString()} / ${total.toLocaleString()}건 (전체 ${ORDERS.length.toLocaleString()}건 중)`;
 
   drawPager(totalPages);
+  refreshBulkBar();
 }
 
 function drawSb() {
   const tb = document.getElementById("orderBody");
   document.getElementById("hitCount").textContent = TOTAL_ROWS.toLocaleString();
   if (!CURRENT_PAGE_ROWS.length) {
-    tb.innerHTML = "<tr><td colspan='9'>검색 결과가 없습니다.</td></tr>";
+    tb.innerHTML = "<tr><td colspan='10'>검색 결과가 없습니다.</td></tr>";
     document.getElementById("pageInfo").textContent = "";
     document.getElementById("pager").innerHTML = "";
     return;
@@ -349,6 +366,7 @@ function drawSb() {
   const start = (CURRENT_PAGE - 1) * PAGE_SIZE;
   tb.innerHTML = CURRENT_PAGE_ROWS.map(r => `
     <tr>
+      <td class="bulk"><input type="checkbox" class="bulk-cb" data-seq="${r.seq_no}" onchange="refreshBulkBar()"></td>
       <td><a href="order-detail.html?seq_no=${r.seq_no}">${esc(r.order_no)}</a></td>
       <td>${esc(r.kind2)}</td>
       <td class="st-${esc(r.status)}">${esc(r.status)}</td>
@@ -363,6 +381,7 @@ function drawSb() {
   document.getElementById("pageInfo").textContent =
     `${(start + 1).toLocaleString()}-${Math.min(start + PAGE_SIZE, TOTAL_ROWS).toLocaleString()} / ${TOTAL_ROWS.toLocaleString()}건`;
   drawPager(totalPages);
+  refreshBulkBar();
 }
 
 function drawPager(total) {
@@ -413,6 +432,83 @@ function esc(s) {
     .replace(/&/g, "&amp;").replace(/</g, "&lt;")
     .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
+
+function toggleAllBulk(checked) {
+  document.querySelectorAll("#orderBody .bulk-cb").forEach(cb => { cb.checked = checked; });
+  refreshBulkBar();
+}
+window.toggleAllBulk = toggleAllBulk;
+
+function refreshBulkBar() {
+  const checked = document.querySelectorAll("#orderBody .bulk-cb:checked");
+  const count = checked.length;
+  const bar = document.getElementById("bulkBar");
+  document.getElementById("bulkCount").textContent = count;
+  bar.style.display = count > 0 ? "flex" : "none";
+  // 헤더 체크박스 상태 동기화
+  const all = document.querySelectorAll("#orderBody .bulk-cb");
+  const head = document.getElementById("bulkSelectAll");
+  if (head) head.checked = (all.length > 0 && count === all.length);
+}
+window.refreshBulkBar = refreshBulkBar;
+
+async function bulkShip() {
+  const checkedSeqs = [...document.querySelectorAll("#orderBody .bulk-cb:checked")]
+    .map(cb => String(cb.dataset.seq));
+  if (!checkedSeqs.length) { alert("선택된 건이 없습니다."); return; }
+
+  // 현재 페이지 행에서 데이터 매칭 (SB / 폴백 양쪽 지원)
+  const pool = window.SB_CONFIGURED ? CURRENT_PAGE_ROWS : (FILTERED.length ? FILTERED : ORDERS);
+  const targets = checkedSeqs
+    .map(seq => pool.find(r => String(r.seq_no) === seq))
+    .filter(r => r);
+  const skipped = targets.filter(r => r.status === "출고").length;
+  const work = targets.filter(r => r.status !== "출고");
+
+  if (!work.length) {
+    alert(`선택된 ${checkedSeqs.length}건 모두 이미 출고 상태입니다.`);
+    return;
+  }
+  const msg = `선택한 ${checkedSeqs.length}건 중 ${work.length}건을 출고로 변경합니다.\n` +
+              (skipped ? `(이미 출고 상태인 ${skipped}건은 제외)\n` : "") +
+              `\n기존의견에 자동 누적됩니다. 진행하시겠습니까?`;
+  if (!confirm(msg)) return;
+
+  const author = localStorage.getItem("current_user") || "관리자";
+  const n = new Date();
+  const pad = x => String(x).padStart(2, "0");
+  const head = `${pad(n.getMonth()+1)}월 ${pad(n.getDate())}일 ${pad(n.getHours())}시 ${pad(n.getMinutes())}분  ${author} 기사의 의견 : 출고`;
+  const stamp = `${head}<br>`;
+
+  const btn = document.getElementById("bulkShipBtn");
+  btn.disabled = true;
+  let ok = 0, fail = 0;
+  for (let i = 0; i < work.length; i++) {
+    const r = work[i];
+    btn.textContent = `처리 중... (${i+1}/${work.length})`;
+    const prev = (r.re_content || "").trim();
+    const newRC = prev ? prev + stamp : stamp;
+    const updated = { ...r, seq_no: Number(r.seq_no), re_content: newRC, status: "출고", re_now: "출고" };
+    delete updated.created_at; delete updated.updated_at;
+    if (window.SB_CONFIGURED) {
+      const res = await window.dbOrderUpsert(updated);
+      if (res?.error) { fail++; console.error("bulkShip fail", r.seq_no, res.error); }
+      else ok++;
+    } else {
+      const u = getUserOrders();
+      const idx = u.findIndex(x => String(x.seq_no) === String(r.seq_no));
+      if (idx >= 0) u[idx] = { ...u[idx], ...updated };
+      else u.push(updated);
+      localStorage.setItem("user_orders", JSON.stringify(u));
+      ok++;
+    }
+  }
+  btn.disabled = false;
+  btn.textContent = "선택한 건 출고로 변경";
+  alert(`완료: ${ok}건${fail ? ` / 실패: ${fail}건` : ""}`);
+  await applyFilter(false);
+}
+window.bulkShip = bulkShip;
 
 document.addEventListener("DOMContentLoaded", load);
 document.addEventListener("keydown", e => {
