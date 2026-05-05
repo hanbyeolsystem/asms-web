@@ -94,6 +94,18 @@ async function loadDB() {
     } catch (e) {}
   }
   updateDBStatus();
+  await fillWorkName();
+}
+
+async function fillWorkName() {
+  const f = document.frm;
+  if (!f || !f.work_name) return;
+  let n = "";
+  if (typeof window.currentUserName === "function") {
+    try { n = (await window.currentUserName()) || ""; } catch (e) {}
+  }
+  if (!n) n = localStorage.getItem("current_user") || "";
+  f.work_name.value = n || "관리자";
 }
 
 function updateDBStatus() {
@@ -334,7 +346,7 @@ async function go() {
     product:      f.mo_engname.value.trim() || "미입력",
     serial:       f.mo_serial.value.trim(),
     process_date: date_str,
-    receiver:     f.work_name.value.trim() || "김상환",
+    receiver:     f.work_name.value.trim() || localStorage.getItem("current_user") || "관리자",
     kind2:        radio("or_kind3") || "출장",
     cu_kind:      f.cu_kind ? f.cu_kind.value.trim() : "",  // 임대제품
     co_name:      f.co_name ? f.co_name.value.trim() : "",  // 주판매
@@ -479,7 +491,7 @@ document.addEventListener("keydown", e => {
         </tr>
         <tr>
           <th>처리자</th>
-          <td><input type="text" name="work_name" size="10" maxlength="20" value="김상환"></td>
+          <td><input type="text" name="work_name" size="10" maxlength="20"></td>
           <th>요청방법</th>
           <td>
             <label><input type="radio" name="or_kind3" value="출장" checked>출장</label>&nbsp;

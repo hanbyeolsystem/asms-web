@@ -250,7 +250,7 @@ function populate(o, listOrder) {
     view.textContent = cleaned || "(이전 처리 의견 없음)";
   }
 
-  const currentUser = localStorage.getItem("current_user") || "김상환";
+  const currentUser = localStorage.getItem("current_user") || "관리자";
   set("work_name", currentUser);
 
   let kind3 = o.or_kind3 || o.kind2 || "";
