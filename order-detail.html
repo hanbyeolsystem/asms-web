@@ -298,14 +298,17 @@ async function save() {
   o.cu_want      = f.cu_want.value;
   const prev = (o.re_content || "").trim();
   const add  = f.re_content2.value.trim();
-  if (add) {
+  const reNowEl = document.querySelector("input[name='re_now']:checked");
+  const reNow = reNowEl ? reNowEl.value : "";
+  const reNowOrig = (CURRENT.re_now || CURRENT.status || "").trim();
+  const STAMP_STATUSES = ["진행","센터","견적","택배","완료","출고"];
+  const statusBecameStampWorthy = STAMP_STATUSES.includes(reNow) && reNow !== reNowOrig;
+  if (add || statusBecameStampWorthy) {
     const n = new Date();
     const pad = x => String(x).padStart(2, "0");
-    const reNowEl = document.querySelector("input[name='re_now']:checked");
-    const reNow = reNowEl ? reNowEl.value : "";
     const author = f.work_name.value || "관리자";
     const head = `${pad(n.getMonth()+1)}월 ${pad(n.getDate())}일 ${pad(n.getHours())}시 ${pad(n.getMinutes())}분  ${author} 기사의 의견 : ${reNow}`;
-    const stamp = `${head}<br>${add}<br>`;
+    const stamp = add ? `${head}<br>${add}<br>` : `${head}<br>`;
     o.re_content = prev ? prev + stamp : stamp;
   } else {
     o.re_content = prev;
