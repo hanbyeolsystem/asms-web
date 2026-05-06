@@ -475,6 +475,8 @@ img { border: 0; vertical-align: middle; }
   .top-menu-wrap .sep { display: none; }
   /* 모바일에서 숨길 요소 (헤더 메뉴 + order-detail 일부 행/버튼 등) */
   .m-hide { display: none !important; }
+  /* 모바일 — 상단 1행(브랜드 + 메뉴) 통째로 숨김. 날짜/시간 행부터 노출 */
+  .top-bar-row1, .top-bar-divider1, .top-bar-divider2 { display: none !important; }
 
   .top-bar-row2 {
     height: auto;
