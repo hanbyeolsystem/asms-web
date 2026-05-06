@@ -33,7 +33,7 @@
               </select>
               <input type="text" name="f_value" id="f_value">
               <input type="submit" value="검색" name="submit">
-              <input type="button" value="신규입력" onclick="alert('(데모) 신규입력');">
+              <input type="button" value="신규입력" onclick="location.href='product-detail.html'">
             </td>
             <td><a href="products.html">[처음으로]</a></td>
           </tr>
@@ -88,8 +88,14 @@ function escapeHtml(s) {
   }[c]));
 }
 
-function godel(seq_no) {
-  if (confirm("정말로 삭제하시겠습니까??")) alert("(데모) 삭제: " + seq_no);
+async function godel(seq_no) {
+  if (!confirm("정말로 삭제하시겠습니까??")) return;
+  if (window.SB_CONFIGURED) {
+    const res = await window.dbProductDelete(seq_no);
+    if (res?.error) { alert("삭제 실패: " + res.error); return; }
+  }
+  alert("삭제되었습니다.");
+  init();
 }
 window.godel = godel;
 

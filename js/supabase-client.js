@@ -130,6 +130,35 @@ async function dbProductBySeq(seq) {
   return data;
 }
 
+async function dbProductNextSeq() {
+  if (!window.SB_CONFIGURED) return null;
+  const { data, error } = await sb()
+    .from("products").select("seq_no").order("seq_no", { ascending: false }).limit(1).maybeSingle();
+  if (error) { console.error("[dbProductNextSeq]", error); return null; }
+  return (data?.seq_no || 0) + 1;
+}
+
+async function dbProductInsert(row) {
+  if (!window.SB_CONFIGURED) return { error: "Supabase 미설정" };
+  const { data, error } = await sb().from("products").insert(row).select().maybeSingle();
+  if (error) { console.error("[dbProductInsert]", error); return { error: error.message }; }
+  return { data };
+}
+
+async function dbProductUpdate(seq_no, patch) {
+  if (!window.SB_CONFIGURED) return { error: "Supabase 미설정" };
+  const { data, error } = await sb().from("products").update(patch).eq("seq_no", Number(seq_no)).select().maybeSingle();
+  if (error) { console.error("[dbProductUpdate]", error); return { error: error.message }; }
+  return { data };
+}
+
+async function dbProductDelete(seq_no) {
+  if (!window.SB_CONFIGURED) return { error: "Supabase 미설정" };
+  const { error } = await sb().from("products").delete().eq("seq_no", Number(seq_no));
+  if (error) { console.error("[dbProductDelete]", error); return { error: error.message }; }
+  return { ok: true };
+}
+
 async function dbCustomersAll() {
   if (!window.SB_CONFIGURED) return null;
   // 접수 횟수 많은 순으로 정렬
@@ -198,6 +227,10 @@ window.dbOrderUpsert    = dbOrderUpsert;
 window.dbOrderDelete    = dbOrderDelete;
 window.dbProductsAll    = dbProductsAll;
 window.dbProductBySeq   = dbProductBySeq;
+window.dbProductNextSeq = dbProductNextSeq;
+window.dbProductInsert  = dbProductInsert;
+window.dbProductUpdate  = dbProductUpdate;
+window.dbProductDelete  = dbProductDelete;
 window.dbCustomersAll   = dbCustomersAll;
 window.dbEngineersAll   = dbEngineersAll;
 window.fnCreateEngineer = fnCreateEngineer;
