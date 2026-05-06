@@ -270,6 +270,7 @@ function populate(o, listOrder) {
 
   let kind3 = o.or_kind3 || o.kind2 || "";
   if (kind3 === "일반") kind3 = "출장";
+  if (kind3 === "방문") kind3 = "내방";
   setRadio("or_kind3", kind3);
   const k3el = document.getElementById("readonlyKind3");
   if (k3el) k3el.textContent = kind3 || "-";
@@ -489,7 +490,7 @@ document.addEventListener("DOMContentLoaded", load);
           <td colspan="3">
             <label><input type="radio" name="or_kind3" value="출장">출장</label>&nbsp;
             <label><input type="radio" name="or_kind3" value="택배">택배</label>&nbsp;
-            <label><input type="radio" name="or_kind3" value="방문">방문</label>
+            <label><input type="radio" name="or_kind3" value="내방">내방</label>
           </td>
         </tr>
         <tr>
