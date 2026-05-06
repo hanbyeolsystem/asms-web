@@ -139,8 +139,8 @@ let MATCHED_CUSTOMER = null;  // 등록 시 사용할 cu_number 결정
 function checkExistingCustomer() {
   const f = document.frm;
   const name = (f.cu_name.value || "").trim();
-  const tel    = [f.cu_tel1.value, f.cu_tel2.value, f.cu_tel3.value].filter(Boolean).join("-");
-  const mobile = [f.cu_mobile1.value, f.cu_mobile2.value, f.cu_mobile3.value].filter(Boolean).join("-");
+  const tel    = (f.cu_tel.value || "").trim();
+  const mobile = (f.cu_mobile.value || "").trim();
   const matches = new Map();
   if (name && name.length >= 2) {
     CUSTOMERS.forEach(c => { if (c.cu_name && c.cu_name.includes(name)) matches.set(c.cu_number, c); });
@@ -218,11 +218,8 @@ function selectCust(idx) {
   document.getElementById("zipcode1").value = c.zipcode1 || "";
   document.getElementById("address1").value = c.address1 || "";
   document.getElementById("address2").value = c.address2 || "";
-  ["cu_tel", "co_tel", "cu_mobile", "co_fax"].forEach(prefix => {
-    const v = (c[prefix] || "").split("-");
-    if (f[prefix + "1"]) f[prefix + "1"].value = v[0] || "";
-    if (f[prefix + "2"]) f[prefix + "2"].value = v[1] || "";
-    if (f[prefix + "3"]) f[prefix + "3"].value = v[2] || "";
+  ["cu_tel", "co_tel", "cu_mobile", "co_fax"].forEach(name => {
+    if (f[name]) f[name].value = c[name] || "";
   });
   closeCustModal();
   // 매칭 안내 박스 숨기기 (이미 회원 선택했으니)
@@ -298,8 +295,8 @@ function radio(name) {
 async function go() {
   const f = document.frm;
   if (!f.cu_name.value) { alert("고객 성명을 입력하세요"); f.cu_name.focus(); return; }
-  if (!f.cu_tel1.value || !f.cu_tel2.value || !f.cu_tel3.value) {
-    alert("고객의 연락처를 입력하세요"); f.cu_tel1.focus(); return;
+  if (!(f.cu_tel.value || "").trim()) {
+    alert("고객의 연락처를 입력하세요"); f.cu_tel.focus(); return;
   }
   if (!f.mo_number.value) { alert("상품 검색을 클릭해서 상품정보를 입력하세요"); return; }
   if (!f.mo_serial.value) { alert("시리얼번호를 입력하세요"); f.mo_serial.focus(); return; }
@@ -350,10 +347,10 @@ async function go() {
     kind2:        radio("or_kind3") || "출장",
     cu_kind:      f.cu_kind ? f.cu_kind.value.trim() : "",  // 임대제품
     co_name:      f.co_name ? f.co_name.value.trim() : "",  // 주판매
-    cu_tel:       [f.cu_tel1.value, f.cu_tel2.value, f.cu_tel3.value].filter(Boolean).join("-"),
-    co_tel:       [f.co_tel1.value, f.co_tel2.value, f.co_tel3.value].filter(Boolean).join("-"),
-    cu_mobile:    [f.cu_mobile1.value, f.cu_mobile2.value, f.cu_mobile3.value].filter(Boolean).join("-"),
-    co_fax:       [f.co_fax1.value, f.co_fax2.value, f.co_fax3.value].filter(Boolean).join("-"),
+    cu_tel:       (f.cu_tel.value || "").trim(),
+    co_tel:       (f.co_tel.value || "").trim(),
+    cu_mobile:    (f.cu_mobile.value || "").trim(),
+    co_fax:       (f.co_fax.value || "").trim(),
     cu_mail:      f.cu_mail.value,
     zipcode1:     f.zipcode1.value,
     address1:     f.address1.value,
@@ -450,29 +447,21 @@ document.addEventListener("keydown", e => {
         <tr>
           <th>전화번호</th>
           <td>
-            <input type="text" name="cu_tel1" size="3" maxlength="4" oninput="checkExistingCustomer()">-
-            <input type="text" name="cu_tel2" size="4" maxlength="4" oninput="checkExistingCustomer()">-
-            <input type="text" name="cu_tel3" size="4" maxlength="4" oninput="checkExistingCustomer()">
+            <input type="tel" name="cu_tel" size="20" maxlength="20" placeholder="예: 053-123-4567" oninput="checkExistingCustomer()">
           </td>
           <th>회사 전화</th>
           <td>
-            <input type="text" name="co_tel1" size="3" maxlength="4">-
-            <input type="text" name="co_tel2" size="4" maxlength="4">-
-            <input type="text" name="co_tel3" size="4" maxlength="4">
+            <input type="tel" name="co_tel" size="20" maxlength="20" placeholder="예: 053-123-4567">
           </td>
         </tr>
         <tr>
           <th>휴대폰</th>
           <td>
-            <input type="text" name="cu_mobile1" size="3" maxlength="4" oninput="checkExistingCustomer()">-
-            <input type="text" name="cu_mobile2" size="4" maxlength="4" oninput="checkExistingCustomer()">-
-            <input type="text" name="cu_mobile3" size="4" maxlength="4" oninput="checkExistingCustomer()">
+            <input type="tel" name="cu_mobile" size="20" maxlength="20" placeholder="예: 010-1234-5678" oninput="checkExistingCustomer()">
           </td>
           <th>팩스</th>
           <td>
-            <input type="text" name="co_fax1" size="3" maxlength="4">-
-            <input type="text" name="co_fax2" size="4" maxlength="4">-
-            <input type="text" name="co_fax3" size="4" maxlength="4">
+            <input type="tel" name="co_fax" size="20" maxlength="20" placeholder="예: 053-123-4567">
           </td>
         </tr>
         <tr>
