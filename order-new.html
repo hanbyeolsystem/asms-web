@@ -113,6 +113,28 @@ function updateDBStatus() {
   if (el) el.textContent = `(검색 가능: 회원 ${CUSTOMERS.length}명 / 상품 ${PRODUCTS.length}건)`;
 }
 
+// 전화번호 자동 포맷팅
+// isMobile=false → 유선 XXX-XXX-XXXX, 7자리만 입력 시 onBlur 에서 053 prefix
+// isMobile=true  → 휴대폰 XXX-XXXX-XXXX
+function formatPhone(raw, isMobile) {
+  const d = (raw || "").replace(/\D/g, "");
+  if (d.length <= 3) return d;
+  if (isMobile) {
+    if (d.length <= 7) return d.slice(0,3) + "-" + d.slice(3);
+    return d.slice(0,3) + "-" + d.slice(3,7) + "-" + d.slice(7,11);
+  }
+  if (d.length <= 6) return d.slice(0,3) + "-" + d.slice(3);
+  if (d.length <= 10) return d.slice(0,3) + "-" + d.slice(3, d.length-4) + "-" + d.slice(-4);
+  return d.slice(0,3) + "-" + d.slice(3,7) + "-" + d.slice(7,11);
+}
+function formatPhoneFinal(raw, isMobile) {
+  let d = (raw || "").replace(/\D/g, "");
+  if (!isMobile && d.length === 7) d = "053" + d;
+  return formatPhone(d, isMobile);
+}
+window.formatPhone = formatPhone;
+window.formatPhoneFinal = formatPhoneFinal;
+
 /* ==================== 우편번호 검색 (Daum API) ==================== */
 function searchZip() {
   if (typeof daum === "undefined") {
@@ -447,21 +469,29 @@ document.addEventListener("keydown", e => {
         <tr>
           <th>전화번호</th>
           <td>
-            <input type="tel" name="cu_tel" size="20" maxlength="20" placeholder="예: 053-123-4567" oninput="checkExistingCustomer()">
+            <input type="tel" name="cu_tel" size="20" maxlength="20" placeholder="예: 053-123-4567"
+                   oninput="this.value=formatPhone(this.value,false);checkExistingCustomer();"
+                   onblur="this.value=formatPhoneFinal(this.value,false);">
           </td>
           <th>회사 전화</th>
           <td>
-            <input type="tel" name="co_tel" size="20" maxlength="20" placeholder="예: 053-123-4567">
+            <input type="tel" name="co_tel" size="20" maxlength="20" placeholder="예: 053-123-4567"
+                   oninput="this.value=formatPhone(this.value,false);"
+                   onblur="this.value=formatPhoneFinal(this.value,false);">
           </td>
         </tr>
         <tr>
           <th>휴대폰</th>
           <td>
-            <input type="tel" name="cu_mobile" size="20" maxlength="20" placeholder="예: 010-1234-5678" oninput="checkExistingCustomer()">
+            <input type="tel" name="cu_mobile" size="20" maxlength="20" placeholder="예: 010-1234-5678"
+                   oninput="this.value=formatPhone(this.value,true);checkExistingCustomer();"
+                   onblur="this.value=formatPhoneFinal(this.value,true);">
           </td>
           <th>팩스</th>
           <td>
-            <input type="tel" name="co_fax" size="20" maxlength="20" placeholder="예: 053-123-4567">
+            <input type="tel" name="co_fax" size="20" maxlength="20" placeholder="예: 053-123-4567"
+                   oninput="this.value=formatPhone(this.value,false);"
+                   onblur="this.value=formatPhoneFinal(this.value,false);">
           </td>
         </tr>
         <tr>

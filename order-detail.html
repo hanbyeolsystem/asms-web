@@ -104,6 +104,23 @@ function getSeqNo() {
   return p.get("seq_no");
 }
 
+function formatPhone(raw, isMobile) {
+  const d = (raw || "").replace(/\D/g, "");
+  if (d.length <= 3) return d;
+  if (isMobile) {
+    if (d.length <= 7) return d.slice(0,3) + "-" + d.slice(3);
+    return d.slice(0,3) + "-" + d.slice(3,7) + "-" + d.slice(7,11);
+  }
+  if (d.length <= 6) return d.slice(0,3) + "-" + d.slice(3);
+  if (d.length <= 10) return d.slice(0,3) + "-" + d.slice(3, d.length-4) + "-" + d.slice(-4);
+  return d.slice(0,3) + "-" + d.slice(3,7) + "-" + d.slice(7,11);
+}
+function formatPhoneFinal(raw, isMobile) {
+  let d = (raw || "").replace(/\D/g, "");
+  if (!isMobile && d.length === 7) d = "053" + d;
+  return formatPhone(d, isMobile);
+}
+
 function cleanReContent(s) {
   if (!s) return "";
   return s
@@ -229,9 +246,10 @@ function populate(o, listOrder) {
   set("address2", o.address2);
   set("cu_kind", o.cu_kind);  // 임대제품 (text input)
 
-  ["cu_tel", "co_tel", "cu_mobile", "co_fax"].forEach(name => {
-    set(name, o[name]);
-  });
+  set("cu_tel",    formatPhoneFinal(o.cu_tel,    false));
+  set("co_tel",    formatPhoneFinal(o.co_tel,    false));
+  set("cu_mobile", formatPhoneFinal(o.cu_mobile, true));
+  set("co_fax",    formatPhoneFinal(o.co_fax,    false));
 
   set("mo_number",   o.mo_number);
   set("mo_engname",  o.mo_engname || o.product);
