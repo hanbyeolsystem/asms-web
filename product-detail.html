@@ -248,7 +248,7 @@ async function load() {
     w.style.display = "block";
     return;
   }
-  const item = products.find(p => String(p.seq_no) === String(seq));
+  item = products.find(p => String(p.seq_no) === String(seq));
   if (!item) {
     const w = document.getElementById("pdWarn");
     w.innerHTML = `seq_no=${seq} 항목을 찾을 수 없습니다. <a href="products.html">목록으로</a>`;
