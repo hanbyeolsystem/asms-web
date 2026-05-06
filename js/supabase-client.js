@@ -102,6 +102,16 @@ async function dbOrderBySeq(seq) {
   return data;
 }
 
+async function dbOrderNoBySeqs(seqs) {
+  if (!window.SB_CONFIGURED || !seqs?.length) return {};
+  const { data, error } = await sb()
+    .from("orders").select("seq_no,order_no").in("seq_no", seqs.map(Number));
+  if (error) { console.error("[dbOrderNoBySeqs]", error); return {}; }
+  const m = {};
+  for (const r of data || []) m[r.seq_no] = r.order_no || "";
+  return m;
+}
+
 async function dbOrderUpsert(row) {
   if (!window.SB_CONFIGURED) return { error: "Supabase 미설정" };
   const { data, error } = await sb()
@@ -223,6 +233,7 @@ async function fnDeleteEngineer(en_id) {
 
 window.dbOrdersAll      = dbOrdersAll;
 window.dbOrderBySeq     = dbOrderBySeq;
+window.dbOrderNoBySeqs  = dbOrderNoBySeqs;
 window.dbOrderUpsert    = dbOrderUpsert;
 window.dbOrderDelete    = dbOrderDelete;
 window.dbProductsAll    = dbProductsAll;

@@ -153,7 +153,16 @@ function render() {
   drawStats();
 }
 
-function drawRows() {
+const ORDER_NO_CACHE = {};
+async function ensureOrderNos(seqs) {
+  if (!window.SB_CONFIGURED) return;
+  const need = [...new Set(seqs.filter(s => s && !(String(s) in ORDER_NO_CACHE)))];
+  if (!need.length) return;
+  const m = (typeof window.dbOrderNoBySeqs === "function") ? await window.dbOrderNoBySeqs(need) : {};
+  for (const s of need) ORDER_NO_CACHE[String(s)] = m[s] || "";
+}
+
+async function drawRows() {
   const tb = document.getElementById("custBody");
   if (!FILTERED.length) {
     tb.innerHTML = "<tr><td colspan='9'>검색 결과가 없습니다.</td></tr>";
@@ -167,7 +176,11 @@ function drawRows() {
   const start = (CURRENT_PAGE - 1) * PAGE_SIZE;
   const slice = FILTERED.slice(start, start + PAGE_SIZE);
 
-  tb.innerHTML = slice.map((r, i) => `
+  await ensureOrderNos(slice.map(r => r.last_seq).filter(Boolean));
+
+  tb.innerHTML = slice.map((r, i) => {
+    const orderNo = r.last_seq ? (ORDER_NO_CACHE[String(r.last_seq)] || `#${r.last_seq}`) : "";
+    return `
     <tr>
       <td>${start + i + 1}</td>
       <td><b style="color:${(r.order_count||0)>=100?'#c00':'#069'};">${(r.order_count||0).toLocaleString()}</b></td>
@@ -179,10 +192,10 @@ function drawRows() {
         ${r.zipcode1 ? "<span class='pill'>" + esc(r.zipcode1) + "</span> " : ""}
         ${esc(r.address1)} ${esc(r.address2)}
       </td>
-      <td>${r.last_seq ? `<a href="order-detail.html?seq_no=${r.last_seq}">#${r.last_seq}</a>` : ""}</td>
+      <td>${r.last_seq ? `<a href="order-detail.html?seq_no=${r.last_seq}">${esc(orderNo)}</a>` : ""}</td>
       <td><a href="javascript:editCustomer('${esc(r.cu_number)}')">수정</a></td>
     </tr>
-  `).join("");
+  `;}).join("");
   document.getElementById("pageInfo").textContent =
     `${start + 1}-${Math.min(start + PAGE_SIZE, total)} / 검색 ${total} 명 / 전체 ${CUSTOMERS.length} 명`;
   drawPager(totalPages);
