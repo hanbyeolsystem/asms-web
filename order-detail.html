@@ -121,6 +121,13 @@ function formatPhoneFinal(raw, isMobile) {
   return formatPhone(d, isMobile);
 }
 
+function formatBizNo(raw) {
+  const d = (raw || "").replace(/\D/g, "");
+  if (d.length <= 3) return d;
+  if (d.length <= 5) return d.slice(0,3) + "-" + d.slice(3);
+  return d.slice(0,3) + "-" + d.slice(3,5) + "-" + d.slice(5,10);
+}
+
 function cleanReContent(s) {
   if (!s) return "";
   return s
@@ -247,7 +254,7 @@ function populate(o, listOrder) {
   set("cu_kind", o.cu_kind);  // 임대제품 (text input)
 
   set("cu_tel",    formatPhoneFinal(o.cu_tel,    false));
-  set("co_tel",    formatPhoneFinal(o.co_tel,    false));
+  set("co_tel",    formatBizNo(o.co_tel));
   set("cu_mobile", formatPhoneFinal(o.cu_mobile, true));
   set("co_fax",    formatPhoneFinal(o.co_fax,    false));
 
@@ -454,7 +461,7 @@ document.addEventListener("DOMContentLoaded", load);
         <tr>
           <th>전화번호</th>
           <td><input type="text" name="cu_tel" size="20" readonly></td>
-          <th class="m-hide">회사 전화</th>
+          <th class="m-hide">사업자번호</th>
           <td class="m-hide"><input type="text" name="co_tel" size="20" readonly></td>
         </tr>
         <tr>

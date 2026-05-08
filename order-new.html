@@ -135,6 +135,15 @@ function formatPhoneFinal(raw, isMobile) {
 window.formatPhone = formatPhone;
 window.formatPhoneFinal = formatPhoneFinal;
 
+// 사업자번호: 10자리 → XXX-XX-XXXXX
+function formatBizNo(raw) {
+  const d = (raw || "").replace(/\D/g, "");
+  if (d.length <= 3) return d;
+  if (d.length <= 5) return d.slice(0,3) + "-" + d.slice(3);
+  return d.slice(0,3) + "-" + d.slice(3,5) + "-" + d.slice(5,10);
+}
+window.formatBizNo = formatBizNo;
+
 /* ==================== 우편번호 검색 (Daum API) ==================== */
 function searchZip() {
   if (typeof daum === "undefined") {
@@ -473,11 +482,10 @@ document.addEventListener("keydown", e => {
                    oninput="this.value=formatPhone(this.value,false);checkExistingCustomer();"
                    onblur="this.value=formatPhoneFinal(this.value,false);">
           </td>
-          <th>회사 전화</th>
+          <th>사업자번호</th>
           <td>
-            <input type="tel" name="co_tel" size="20" maxlength="20" placeholder="예: 053-123-4567"
-                   oninput="this.value=formatPhone(this.value,false);"
-                   onblur="this.value=formatPhoneFinal(this.value,false);">
+            <input type="text" name="co_tel" size="20" maxlength="12" placeholder="예: 123-45-67890"
+                   oninput="this.value=formatBizNo(this.value);">
           </td>
         </tr>
         <tr>
