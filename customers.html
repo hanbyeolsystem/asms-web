@@ -25,9 +25,9 @@
     display: flex; gap: 18px;
   }
   .stat-bar b { color: #000068; }
-  /* 비관리자: 수정/삭제 컬럼 숨김 */
-  .admin-only { display: none; }
-  body.is-admin .admin-only { display: table-cell; }
+  /* 삭제 링크는 관리자에게만 (수정은 모두에게) */
+  .admin-del { display: none; }
+  body.is-admin .admin-del { display: inline; }
 </style>
 </head>
 <body>
@@ -70,7 +70,7 @@
             <th>이메일</th>
             <th>주소</th>
             <th width="60">최근접수</th>
-            <th width="80" class="admin-only">관리</th>
+            <th width="80">관리</th>
           </tr>
         </thead>
         <tbody id="custBody">
@@ -205,10 +205,8 @@ async function drawRows() {
         ${esc(r.address1)} ${esc(r.address2)}
       </td>
       <td>${r.last_seq ? `<a href="order-detail.html?seq_no=${r.last_seq}">${esc(orderNo)}</a>` : ""}</td>
-      <td class="admin-only">
-        <a href="javascript:editCustomer('${esc(r.cu_number)}')">수정</a>
-        &nbsp;|&nbsp;
-        <a href="javascript:deleteCustomer('${esc(r.cu_number)}','${esc(r.cu_name)}')" style="color:#c00;">삭제</a>
+      <td>
+        <a href="javascript:editCustomer('${esc(r.cu_number)}')">수정</a><span class="admin-del">&nbsp;|&nbsp;<a href="javascript:deleteCustomer('${esc(r.cu_number)}','${esc(r.cu_name)}')" style="color:#c00;">삭제</a></span>
       </td>
     </tr>
   `;}).join("");
