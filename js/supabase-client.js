@@ -257,3 +257,17 @@ async function currentUserName() {
   return user.user_metadata?.name || user.email?.split("@")[0] || user.email || "사용자";
 }
 window.currentUserName = currentUserName;
+
+// ---------- 관리자 권한 체크 ----------
+async function currentIsAdmin() {
+  if (!window.SB_CONFIGURED) return true;            // 데모 모드: 항상 admin
+  const { data: { user } } = await window.sb.auth.getUser();
+  if (!user) return false;
+  if (user.email === "admin@asms.local") return true; // 레거시 admin 계정
+  try {
+    const { data } = await sb()
+      .from("engineers").select("en_role").eq("user_id", user.id).maybeSingle();
+    return data?.en_role === "admin";
+  } catch (e) { return false; }
+}
+window.currentIsAdmin = currentIsAdmin;

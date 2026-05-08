@@ -404,7 +404,6 @@ async function del() {
   location.href = "orders.html";
 }
 
-function sendSms() { location.href = "sms.html"; }
 function printEstimate() { window.print(); }
 function searchZip() {
   if (typeof daum === "undefined") { alert("Daum 우편번호 서비스를 불러오지 못했습니다."); return; }
@@ -423,7 +422,17 @@ function searchZip() {
   }).open();
 }
 
-document.addEventListener("DOMContentLoaded", load);
+document.addEventListener("DOMContentLoaded", async () => {
+  load();
+  // 관리자만 삭제 버튼 노출
+  if (typeof window.currentIsAdmin === "function") {
+    try {
+      if (await window.currentIsAdmin()) {
+        document.querySelectorAll(".admin-only-btn").forEach(b => b.style.display = "");
+      }
+    } catch (e) {}
+  }
+});
 </script>
 </head>
 <body>
@@ -541,9 +550,8 @@ document.addEventListener("DOMContentLoaded", load);
 
       <div class="btn-row">
         <button class="btn btn-primary" onclick="save()">저장</button>
-        <button class="btn m-hide" onclick="sendSms()">SMS 발송</button>
         <button class="btn m-hide" onclick="printEstimate()">견적서 인쇄</button>
-        <button class="btn m-hide" onclick="del()">삭제</button>
+        <button class="btn m-hide admin-only-btn" onclick="del()" style="display:none;">삭제</button>
         <button class="btn" onclick="location.href='orders.html'">목록으로</button>
       </div>
     </div>

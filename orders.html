@@ -22,6 +22,9 @@
   .bulk-bar button:hover { background: #1d4ed8; }
   .order-table td.bulk, .order-table th.bulk { width: 32px; text-align: center; padding: 0; }
   .order-table input.bulk-cb { width: 18px; height: 18px; margin: 0; cursor: pointer; }
+  /* 비관리자: 삭제 컬럼 숨김. body.is-admin 일 때만 표시 */
+  .admin-only { display: none; }
+  body.is-admin .admin-only { display: table-cell; }
   .bulk-modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 1000; }
   .bulk-modal.show { display: flex; }
   .bulk-modal-box { background: #fff; padding: 20px; border-radius: 8px; min-width: 320px; max-width: 480px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,.2); }
@@ -125,7 +128,7 @@
               <th width="90">시리얼번호</th>
               <th width="75">처리일</th>
               <th width="65">접수자</th>
-              <th width="45">삭제</th>
+              <th width="45" class="admin-only">삭제</th>
             </tr>
           </thead>
           <tbody id="orderBody">
@@ -206,7 +209,16 @@ function mergeUser() {
   ORDERS = [...map.values()].sort((a, b) => Number(b.seq_no) - Number(a.seq_no));
 }
 
+async function checkAdmin() {
+  if (typeof window.currentIsAdmin !== "function") return;
+  try {
+    const ok = await window.currentIsAdmin();
+    if (ok) document.body.classList.add("is-admin");
+  } catch (e) {}
+}
+
 async function load() {
+  checkAdmin();   // 비동기 — 결과 오기 전엔 삭제 컬럼 숨김 상태
   if (window.SB_CONFIGURED) {
     // 서버 측 페이지네이션: 첫 페이지만 즉시 fetch
     const initStatus = new URLSearchParams(location.search).get("status") || "";
@@ -365,7 +377,7 @@ function draw() {
       <td>${esc(r.serial)}</td>
       <td>${esc(r.process_date)}</td>
       <td>${esc(r.receiver)}</td>
-      <td><a href="javascript:godel('${r.seq_no}')">삭제</a></td>
+      <td class="admin-only"><a href="javascript:godel('${r.seq_no}')">삭제</a></td>
     </tr>
   `).join("");
 
@@ -399,7 +411,7 @@ function drawSb() {
       <td>${esc(r.serial)}</td>
       <td>${esc(r.process_date)}</td>
       <td>${esc(r.receiver)}</td>
-      <td><a href="javascript:godel('${r.seq_no}')">삭제</a></td>
+      <td class="admin-only"><a href="javascript:godel('${r.seq_no}')">삭제</a></td>
     </tr>
   `).join("");
   document.getElementById("pageInfo").textContent =
