@@ -92,6 +92,15 @@
 let CUSTOMERS = [];
 let FILTERED  = [];
 const PAGE_SIZE = 50;
+
+// 사업자번호 자동 포맷팅: XXX-XX-XXXXX
+function formatBizNo(raw) {
+  const d = (raw || "").replace(/\D/g, "");
+  if (d.length <= 3) return d;
+  if (d.length <= 5) return d.slice(0,3) + "-" + d.slice(3);
+  return d.slice(0,3) + "-" + d.slice(3,5) + "-" + d.slice(5,10);
+}
+window.formatBizNo = formatBizNo;
 let CURRENT_PAGE = 1;
 
 async function load() {
@@ -265,7 +274,7 @@ function openCustEdit(target) {
   f.co_name.value   = target?.co_name   || "";  // 주판매
   f.cu_mobile.value = target?.cu_mobile || "";
   f.cu_tel.value    = target?.cu_tel    || "";
-  f.co_tel.value    = target?.co_tel    || "";
+  f.co_tel.value    = formatBizNo(target?.co_tel || "");
   f.co_fax.value    = target?.co_fax    || "";
   f.cu_mail.value   = target?.cu_mail   || "";
   f.zipcode1.value  = target?.zipcode1  || "";
@@ -390,7 +399,7 @@ document.addEventListener("keydown", e => {
           <tr><td class="lbl">주판매</td><td><input type="text" name="co_name" placeholder="자주 구매하는 제품"></td></tr>
           <tr><td class="lbl">휴대폰</td><td><input type="text" name="cu_mobile" placeholder="010-0000-0000"></td></tr>
           <tr><td class="lbl">일반전화</td><td><input type="text" name="cu_tel" placeholder="053-000-0000"></td></tr>
-          <tr><td class="lbl">회사전화</td><td><input type="text" name="co_tel"></td></tr>
+          <tr><td class="lbl">사업자번호</td><td><input type="text" name="co_tel" maxlength="12" placeholder="123-45-67890" oninput="this.value=formatBizNo(this.value);"></td></tr>
           <tr><td class="lbl">팩스</td><td><input type="text" name="co_fax"></td></tr>
           <tr><td class="lbl">이메일</td><td><input type="email" name="cu_mail"></td></tr>
           <tr><td class="lbl">우편번호</td><td><input type="text" name="zipcode1"></td></tr>
