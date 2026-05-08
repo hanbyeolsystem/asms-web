@@ -201,6 +201,13 @@ async function dbCustomerUpdate(cu_number, patch) {
   return { data };
 }
 
+async function dbCustomerDelete(cu_number) {
+  if (!window.SB_CONFIGURED) return { error: "Supabase 미설정" };
+  const { error } = await sb().from("customers").delete().eq("cu_number", cu_number);
+  if (error) { console.error("[dbCustomerDelete]", error); return { error: error.message }; }
+  return { ok: true };
+}
+
 async function dbEngineersAll() {
   if (!window.SB_CONFIGURED) return null;
   const { data, error } = await sb()
@@ -248,6 +255,7 @@ window.fnCreateEngineer = fnCreateEngineer;
 window.fnDeleteEngineer = fnDeleteEngineer;
 window.dbCustomerInsert = dbCustomerInsert;
 window.dbCustomerUpdate = dbCustomerUpdate;
+window.dbCustomerDelete = dbCustomerDelete;
 
 // ---------- 현재 사용자 이름 (헤더용) ----------
 async function currentUserName() {

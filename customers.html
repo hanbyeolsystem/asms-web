@@ -25,6 +25,9 @@
     display: flex; gap: 18px;
   }
   .stat-bar b { color: #000068; }
+  /* 비관리자: 수정/삭제 컬럼 숨김 */
+  .admin-only { display: none; }
+  body.is-admin .admin-only { display: table-cell; }
 </style>
 </head>
 <body>
@@ -67,7 +70,7 @@
             <th>이메일</th>
             <th>주소</th>
             <th width="60">최근접수</th>
-            <th width="50">관리</th>
+            <th width="80" class="admin-only">관리</th>
           </tr>
         </thead>
         <tbody id="custBody">
@@ -193,7 +196,11 @@ async function drawRows() {
         ${esc(r.address1)} ${esc(r.address2)}
       </td>
       <td>${r.last_seq ? `<a href="order-detail.html?seq_no=${r.last_seq}">${esc(orderNo)}</a>` : ""}</td>
-      <td><a href="javascript:editCustomer('${esc(r.cu_number)}')">수정</a></td>
+      <td class="admin-only">
+        <a href="javascript:editCustomer('${esc(r.cu_number)}')">수정</a>
+        &nbsp;|&nbsp;
+        <a href="javascript:deleteCustomer('${esc(r.cu_number)}','${esc(r.cu_name)}')" style="color:#c00;">삭제</a>
+      </td>
     </tr>
   `;}).join("");
   document.getElementById("pageInfo").textContent =
@@ -318,6 +325,18 @@ function addCustomer() { openCustEdit(null); }
 window.editCustomer = editCustomer;
 window.addCustomer  = addCustomer;
 
+async function deleteCustomer(cu_number, cu_name) {
+  if (!confirm(`정말 [${cu_name}] 고객을 삭제하시겠습니까?\n(접수내역과는 별개로 고객 행만 삭제됩니다)`)) return;
+  if (window.SB_CONFIGURED) {
+    const res = await window.dbCustomerDelete(cu_number);
+    if (res?.error) { alert("삭제 실패: " + res.error); return; }
+  }
+  CUSTOMERS = CUSTOMERS.filter(c => c.cu_number !== cu_number);
+  alert("삭제되었습니다.");
+  render();
+}
+window.deleteCustomer = deleteCustomer;
+
 function downloadCsv() {
   const cols = ["cu_number","cu_kind","cu_name","co_name","cu_mobile","cu_tel",
                 "co_tel","co_fax","cu_mail","zipcode1","address1","address2","last_seq"];
@@ -332,7 +351,14 @@ function downloadCsv() {
   a.click();
 }
 
-document.addEventListener("DOMContentLoaded", load);
+document.addEventListener("DOMContentLoaded", async () => {
+  load();
+  if (typeof window.currentIsAdmin === "function") {
+    try {
+      if (await window.currentIsAdmin()) document.body.classList.add("is-admin");
+    } catch (e) {}
+  }
+});
 document.addEventListener("keydown", e => {
   if (e.key === "Enter" && document.activeElement.id === "filterText") render();
 });
