@@ -422,6 +422,26 @@ async function go() {
         });
       }
     } catch (e) { console.warn("customers 동기화 실패:", e); }
+
+    // 슬랙 알림 발송 (실패해도 접수는 성공으로 처리)
+    try {
+      const { data: nRes, error: nErr } = await window.sb.functions.invoke("notify-order", {
+        method: "POST",
+        body: {
+          order: {
+            order_no:  newOrder.order_no,
+            cu_name:   newOrder.cu_name,
+            cu_tel:    newOrder.cu_tel,
+            cu_mobile: newOrder.cu_mobile,
+            product:   newOrder.product,
+            kind2:     newOrder.kind2,
+            receiver:  newOrder.receiver,
+            cu_want:   newOrder.cu_want,
+          },
+        },
+      });
+      if (nErr || nRes?.error) console.warn("[notify-order]", nErr || nRes?.error, nRes?.detail);
+    } catch (e) { console.warn("슬랙 알림 발송 실패:", e); }
   } else {
     const stored = JSON.parse(localStorage.getItem("user_orders") || "[]");
     stored.push(newOrder);
