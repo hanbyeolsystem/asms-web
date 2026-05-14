@@ -52,7 +52,7 @@
 
         <!-- 검색 -->
         <table class="search-box">
-          <form name="frm1" onsubmit="event.preventDefault();applyFilter();">
+          <form name="frm1" onsubmit="event.preventDefault();manualSearch();">
           <tr>
             <td colspan="2">
               <select id="f_name">
@@ -296,7 +296,12 @@ function bindStatusTabs() {
 
   // 브라우저 뒤로/앞으로 시에도 동작
   window.addEventListener("popstate", () => {
-    const s = new URLSearchParams(location.search).get("status") || "";
+    const url = new URL(location.href);
+    // popstate 로 이동된 상태에서는 입력창을 항상 비워두고
+    // 필터는 URL 의 ?cu / ?status 로부터 복원
+    document.getElementById("f_name").value = "cu_name";
+    document.getElementById("f_value").value = "";
+    const s = url.searchParams.get("status") || "";
     setStatus(s);
   });
 }
@@ -313,8 +318,9 @@ function getStatus() {
 
 async function applyFilter(resetPage = true) {
   if (resetPage) CURRENT_PAGE = 1;
-  const f = document.getElementById("f_name").value;
-  const q = document.getElementById("f_value").value.trim();
+  const cu = new URLSearchParams(location.search).get("cu") || "";
+  const f = cu ? "cu_name" : document.getElementById("f_name").value;
+  const q = cu || document.getElementById("f_value").value.trim();
   const s = getStatus();
 
   if (window.SB_CONFIGURED) {
@@ -347,7 +353,22 @@ async function applyFilter(resetPage = true) {
   draw();
 }
 
+function clearCuFromUrl() {
+  const url = new URL(location.href);
+  if (url.searchParams.has("cu")) {
+    url.searchParams.delete("cu");
+    history.replaceState({}, "", url.toString());
+  }
+}
+
+function manualSearch() {
+  clearCuFromUrl();
+  applyFilter();
+}
+window.manualSearch = manualSearch;
+
 function resetFilter() {
+  clearCuFromUrl();
   document.getElementById("f_name").value = "cu_name";
   document.getElementById("f_value").value = "";
   setStatus("");
@@ -356,9 +377,16 @@ function resetFilter() {
 function searchByCustomer(name) {
   const v = (name || "").trim();
   if (!v) return;
+  // 입력창은 비워둠 (이름이 보이지 않게)
   document.getElementById("f_name").value = "cu_name";
-  document.getElementById("f_value").value = v;
-  setStatus("");  // 상태 필터 전체로 + applyFilter 호출
+  document.getElementById("f_value").value = "";
+  // URL 에 ?cu=<이름> 을 푸시 → Back 버튼이 이전 상태로 돌아감
+  const url = new URL(location.href);
+  url.searchParams.set("cu", v);
+  url.searchParams.delete("status");
+  history.pushState({}, "", url.toString());
+  // 상태 필터는 "전체" 로 + 검색 실행
+  setStatus("");
   window.scrollTo(0, 0);
 }
 window.searchByCustomer = searchByCustomer;
