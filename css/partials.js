@@ -23,6 +23,7 @@
           <a href="customers.html" class="m-hide">고객관리</a> <span class="sep m-hide">|</span>
           <a href="products.html" class="m-hide">부품/상품관리</a> <span class="sep m-hide">|</span>
           <a href="engineers.html" class="m-hide">엔지니어</a> <span class="sep m-hide">|</span>
+          <a href="#" id="pwChangeLink">비밀번호변경</a> <span class="sep">|</span>
           <a href="#" id="logoutLink">로그아웃</a>
         </div>
       </div>
@@ -54,6 +55,99 @@
     <div class="foot-bar">A/S Management System.</div>
   `;
 
+  const pwModalHtml = `
+    <div id="pwModal" class="pw-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
+      <div style="background:#fff;width:380px;max-width:92vw;border-radius:6px;overflow:hidden;">
+        <div style="background:#1e2939;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:bold;font-size:14px;">비밀번호 변경</span>
+          <button type="button" id="pwCloseBtn" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">×</button>
+        </div>
+        <div style="padding:16px;">
+          <form id="pwForm" onsubmit="event.preventDefault();">
+            <table style="width:100%;border-collapse:collapse;">
+              <tr><td style="padding:6px 4px;font-size:13px;color:#555;width:110px;">현재 비밀번호</td>
+                  <td style="padding:6px 4px;"><input type="password" id="pwCurrent" autocomplete="current-password" style="width:100%;padding:6px 8px;box-sizing:border-box;border:1px solid #ccc;border-radius:3px;font-size:13px;"></td></tr>
+              <tr><td style="padding:6px 4px;font-size:13px;color:#555;">새 비밀번호</td>
+                  <td style="padding:6px 4px;"><input type="password" id="pwNew" autocomplete="new-password" style="width:100%;padding:6px 8px;box-sizing:border-box;border:1px solid #ccc;border-radius:3px;font-size:13px;"></td></tr>
+              <tr><td style="padding:6px 4px;font-size:13px;color:#555;">새 비밀번호 확인</td>
+                  <td style="padding:6px 4px;"><input type="password" id="pwConfirm" autocomplete="new-password" style="width:100%;padding:6px 8px;box-sizing:border-box;border:1px solid #ccc;border-radius:3px;font-size:13px;"></td></tr>
+            </table>
+            <div style="font-size:11px;color:#888;margin-top:6px;">※ 비밀번호는 6자 이상이어야 합니다.</div>
+          </form>
+        </div>
+        <div id="pwMsg" style="font-size:12px;min-height:16px;padding:0 16px 6px;"></div>
+        <div style="padding:10px 14px;border-top:1px solid #eee;text-align:right;">
+          <button type="button" id="pwCancelBtn" style="padding:6px 14px;font-size:13px;cursor:pointer;margin-left:6px;">취소</button>
+          <button type="button" id="pwSaveBtn" style="padding:6px 14px;font-size:13px;cursor:pointer;margin-left:6px;">변경</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  function showPwMsg(text, kind) {
+    const el = document.getElementById("pwMsg");
+    if (!el) return;
+    el.textContent = text;
+    el.style.color = kind === "err" ? "#c00" : (kind === "ok" ? "#060" : "#555");
+  }
+
+  function openPwModal() {
+    const m = document.getElementById("pwModal");
+    if (!m) return;
+    document.getElementById("pwCurrent").value = "";
+    document.getElementById("pwNew").value = "";
+    document.getElementById("pwConfirm").value = "";
+    showPwMsg("", "");
+    m.style.display = "flex";
+    setTimeout(() => document.getElementById("pwCurrent").focus(), 50);
+  }
+
+  function closePwModal() {
+    const m = document.getElementById("pwModal");
+    if (m) m.style.display = "none";
+  }
+
+  async function submitPwChange() {
+    if (!window.SB_CONFIGURED || !window.sb) {
+      showPwMsg("Supabase 미설정 상태에서는 변경할 수 없습니다.", "err");
+      return;
+    }
+    const cur = document.getElementById("pwCurrent").value;
+    const np  = document.getElementById("pwNew").value;
+    const cf  = document.getElementById("pwConfirm").value;
+    if (!cur || !np || !cf) { showPwMsg("모든 항목을 입력하세요.", "err"); return; }
+    if (np.length < 6) { showPwMsg("새 비밀번호는 6자 이상이어야 합니다.", "err"); return; }
+    if (np !== cf) { showPwMsg("새 비밀번호 확인이 일치하지 않습니다.", "err"); return; }
+    if (np === cur) { showPwMsg("새 비밀번호가 현재 비밀번호와 같습니다.", "err"); return; }
+
+    const btn = document.getElementById("pwSaveBtn");
+    btn.disabled = true;
+    showPwMsg("처리 중...", "");
+    try {
+      const { data: { user } } = await window.sb.auth.getUser();
+      if (!user?.email) throw new Error("로그인 정보를 확인할 수 없습니다.");
+
+      // 1) 현재 비밀번호 검증: 동일 이메일/현재pw 로 재로그인 시도
+      const { error: reErr } = await window.sb.auth.signInWithPassword({
+        email: user.email, password: cur,
+      });
+      if (reErr) throw new Error("현재 비밀번호가 올바르지 않습니다.");
+
+      // 2) 신규 비밀번호로 변경
+      const { error: upErr } = await window.sb.auth.updateUser({ password: np });
+      if (upErr) throw upErr;
+
+      showPwMsg("변경되었습니다. 다시 로그인해주세요.", "ok");
+      setTimeout(async () => {
+        await window.sb.auth.signOut();
+        location.href = "login.html";
+      }, 900);
+    } catch (e) {
+      showPwMsg(e.message || String(e), "err");
+      btn.disabled = false;
+    }
+  }
+
   function tick() {
     const n = new Date();
     let h = n.getHours();
@@ -71,6 +165,21 @@
     const f = document.getElementById("app-footer");
     if (h) h.innerHTML = headerHtml;
     if (f) f.innerHTML = footerHtml;
+    // 비밀번호 변경 모달을 body 끝에 한 번만 주입
+    if (!document.getElementById("pwModal")) {
+      const wrap = document.createElement("div");
+      wrap.innerHTML = pwModalHtml;
+      document.body.appendChild(wrap.firstElementChild);
+      document.getElementById("pwCloseBtn").addEventListener("click", closePwModal);
+      document.getElementById("pwCancelBtn").addEventListener("click", closePwModal);
+      document.getElementById("pwSaveBtn").addEventListener("click", submitPwChange);
+      document.getElementById("pwModal").addEventListener("click", (e) => {
+        if (e.target.id === "pwModal") closePwModal();
+      });
+      document.getElementById("pwConfirm").addEventListener("keypress", (e) => {
+        if ((e.keyCode || e.which) === 13) submitPwChange();
+      });
+    }
     tick();
     setInterval(tick, 1000);
 
@@ -86,6 +195,13 @@
       e.preventDefault();
       if (typeof window.logout === "function") window.logout();
       else location.href = "login.html";
+    });
+
+    // 비밀번호 변경 링크 → 모달 오픈
+    const pwLink = document.getElementById("pwChangeLink");
+    if (pwLink) pwLink.addEventListener("click", e => {
+      e.preventDefault();
+      openPwModal();
     });
 
     // 인증 가드 (login.html / index.html 제외) — 미로그인 시 login.html 로
