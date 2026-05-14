@@ -12,6 +12,8 @@
 <style>
   .order-table { width: 100%; }
   .order-table td.cu { text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+  .order-table td.cu-clickable { cursor: pointer; color: #2563eb; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
+  .order-table td.cu-clickable:hover { color: #1d4ed8; background: #eef4ff; }
   .order-table td.product { white-space: nowrap; text-align: center; }
   .toolbar2 { width: 730px; margin: 6px auto 0; text-align: right; color: #888; font-size: 11px; }
   .bulk-bar { width: 730px; margin: 6px auto 4px; padding: 8px 10px; background: #fff7d6; border: 1px solid #f0c000; border-radius: 4px;
@@ -351,6 +353,27 @@ function resetFilter() {
   setStatus("");
 }
 
+function searchByCustomer(name) {
+  const v = (name || "").trim();
+  if (!v) return;
+  document.getElementById("f_name").value = "cu_name";
+  document.getElementById("f_value").value = v;
+  setStatus("");  // 상태 필터 전체로 + applyFilter 호출
+  window.scrollTo(0, 0);
+}
+window.searchByCustomer = searchByCustomer;
+
+document.addEventListener("DOMContentLoaded", () => {
+  const tb = document.getElementById("orderBody");
+  if (tb) {
+    tb.addEventListener("click", (e) => {
+      const td = e.target.closest("td.cu-clickable");
+      if (!td) return;
+      searchByCustomer(td.dataset.cu);
+    });
+  }
+});
+
 function draw() {
   const tb = document.getElementById("orderBody");
   document.getElementById("hitCount").textContent = FILTERED.length.toLocaleString();
@@ -372,7 +395,7 @@ function draw() {
       <td><a href="order-detail.html?seq_no=${r.seq_no}">${esc(r.order_no)}</a></td>
       <td>${esc(r.kind2)}</td>
       <td class="st-${esc(r.status)}">${esc(r.status)}</td>
-      <td class="cu" title="${esc(r.cu_name)}">${esc(r.cu_name)}</td>
+      <td class="cu ${r.cu_name ? 'cu-clickable' : ''}" title="${esc(r.cu_name)}" data-cu="${esc(r.cu_name)}">${esc(r.cu_name)}</td>
       <td class="product"><a href="order-detail.html?seq_no=${r.seq_no}">${esc(r.product)}</a></td>
       <td>${esc(r.serial)}</td>
       <td>${esc(r.process_date)}</td>
@@ -406,7 +429,7 @@ function drawSb() {
       <td><a href="order-detail.html?seq_no=${r.seq_no}">${esc(r.order_no)}</a></td>
       <td>${esc(r.kind2)}</td>
       <td class="st-${esc(r.status)}">${esc(r.status)}</td>
-      <td class="cu" title="${esc(r.cu_name)}">${esc(r.cu_name)}</td>
+      <td class="cu ${r.cu_name ? 'cu-clickable' : ''}" title="${esc(r.cu_name)}" data-cu="${esc(r.cu_name)}">${esc(r.cu_name)}</td>
       <td class="product"><a href="order-detail.html?seq_no=${r.seq_no}">${esc(r.product)}</a></td>
       <td>${esc(r.serial)}</td>
       <td>${esc(r.process_date)}</td>
